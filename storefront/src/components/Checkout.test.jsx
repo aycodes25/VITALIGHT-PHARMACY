@@ -2,15 +2,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { CatalogProvider } from '../context/CatalogContext.jsx'
+import { CatalogProvider, useCatalog } from '../context/CatalogContext.jsx'
 import { StoreProvider, useStore } from '../context/StoreContext.jsx'
 import CartDrawer from './CartDrawer.jsx'
 import OrderModal from './OrderModal.jsx'
 
 function Controls() {
   const { add, openCart, totals } = useStore()
+  const { status } = useCatalog()
   return (
     <>
+      <span data-testid="status">{status}</span>
       <button onClick={() => add('paracetamol-500mg', 2)}>add-otc</button>
       <button onClick={() => add('amoxicillin-500mg')}>add-rx</button>
       <button onClick={openCart}>open</button>
@@ -171,8 +173,7 @@ describe('cart drawer stock limits', () => {
   it('disables + at the stock limit and shows an availability note', async () => {
     mockStock(2)
     setup()
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await waitFor(() => expect(screen.getByTestId('status').textContent).not.toBe('loading'))
     fireEvent.click(screen.getByText('add-otc'))
     fireEvent.click(screen.getByText('open'))
     expect(screen.getByLabelText('Add one Paracetamol 500 mg Tablets').disabled).toBe(true)

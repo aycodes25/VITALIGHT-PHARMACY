@@ -40,6 +40,8 @@ Follow these steps in order when this version replaces one that is already live.
 3. **Review and trim the catalogue** in `/admin`: check names, prices, stock and visibility of your real products.
 4. Apply `supabase/migrations/002_seed_catalogue.sql` **only if** you want the 113 sample products published. They are created with `is_active = true` and sample prices and stock, so they appear on the live storefront immediately. Delete or edit them in the admin before taking orders.
 
+If you skip `002_seed_catalogue.sql` on an existing database, review the tags and descriptions of the 7 original products in the admin, as older versions used promotional wording there.
+
 Re-running `supabase/schema.sql` re-creates 4 empty legacy categories. Re-run `001_catalogue_v2.sql` afterwards to remove them.
 
 ## Real product photos

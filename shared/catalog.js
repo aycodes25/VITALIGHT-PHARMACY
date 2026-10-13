@@ -23,10 +23,10 @@ function build(category, rows) {
 
 export const categories = [
   { name: 'Medicines & pain relief', icon: '✚', description: 'Everyday essentials', sort_order: 0 },
-  { name: 'Cold, flu & allergy', icon: '❄', description: 'Seasonal comfort', sort_order: 1 },
+  { name: 'Cold, flu & allergy', icon: '❄', description: 'Everyday essentials', sort_order: 1 },
   { name: 'Digestive health', icon: '◎', description: 'Gut and stomach care', sort_order: 2 },
   { name: 'Vitamins & supplements', icon: '✳', description: 'Feel good, every day', sort_order: 3 },
-  { name: 'Skin care & dermatology', icon: '❋', description: 'Cleanse, protect, soothe', sort_order: 4 },
+  { name: 'Skin care & dermatology', icon: '❋', description: 'Everyday skin care', sort_order: 4 },
   { name: 'Hair, body & personal care', icon: '✿', description: 'Care from head to toe', sort_order: 5 },
   { name: 'Mother & baby', icon: '♡', description: 'Gentle care for little ones', sort_order: 6 },
   { name: 'Sexual wellness & family planning', icon: '♥', description: 'Private, discreet care', sort_order: 7 },

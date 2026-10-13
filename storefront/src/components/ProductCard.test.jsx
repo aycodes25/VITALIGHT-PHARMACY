@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { CatalogProvider } from '../context/CatalogContext.jsx'
+import { CatalogProvider, useCatalog } from '../context/CatalogContext.jsx'
 import { StoreProvider, useStore } from '../context/StoreContext.jsx'
 import ProductCard from './ProductCard.jsx'
 
@@ -85,7 +85,12 @@ describe('ProductCard', () => {
 
 describe('ProductCard basket limit', () => {
   function Notice() {
-    return <span data-testid="notice">{useStore().notice}</span>
+    return (
+      <>
+        <span data-testid="notice">{useStore().notice}</span>
+        <span data-testid="status">{useCatalog().status}</span>
+      </>
+    )
   }
   it('does not add beyond the stock and says so', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({
@@ -99,7 +104,7 @@ describe('ProductCard basket limit', () => {
         </StoreProvider></CatalogProvider>
       </MemoryRouter>,
     )
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await waitFor(() => expect(screen.getByTestId('status').textContent).not.toBe('loading'))
     const button = screen.getByLabelText(/Add Live one/)
     fireEvent.click(button)
     expect(JSON.parse(localStorage.getItem('vitalight.cart'))).toEqual({ 'live-one': 1 })

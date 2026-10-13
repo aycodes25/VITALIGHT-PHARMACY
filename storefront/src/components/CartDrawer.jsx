@@ -21,6 +21,8 @@ export default function CartDrawer() {
 
   if (!cartOpen) return null
   const hasUnavailable = lines.some(({ product }) => !isInStock(product))
+  const overStock = lines.some(({ product, quantity }) => isInStock(product) && Number.isFinite(Number(product.stock)) && quantity > Number(product.stock))
+  const blocked = hasUnavailable || overStock
 
   return (
     <div className="overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeCart() }}>
@@ -65,9 +67,10 @@ export default function CartDrawer() {
                 <p className="notice">Your basket includes prescription medicines. Our pharmacist will verify your prescription before dispatch.</p>
               )}
               {hasUnavailable && <p className="notice">Remove out-of-stock items to continue with your order request.</p>}
+              {!hasUnavailable && overStock && <p className="notice">Reduce quantities to the available stock to continue with your order request.</p>}
               <div className="row"><span>Estimated total</span><strong className="price">{formatPrice(totals.total)}</strong></div>
               <p style={{ fontSize: 13 }}>Our team confirms availability, final price and delivery before fulfilment.</p>
-              <button className="btn btn-primary btn-block" type="button" disabled={hasUnavailable} onClick={openOrder}>Request this order <Icon name="arrow" size={16} /></button>
+              <button className="btn btn-primary btn-block" type="button" disabled={blocked} onClick={openOrder}>Request this order <Icon name="arrow" size={16} /></button>
               <button className="btn btn-outline btn-block" type="button" onClick={closeCart}>Keep browsing</button>
             </div>
           </>

@@ -25,6 +25,7 @@ describe('buildSeedSql', () => {
     const stmt = sql.slice(start, sql.indexOf(';', start))
     expect(LEGACY_PRODUCT_IDS).toHaveLength(7)
     for (const id of LEGACY_PRODUCT_IDS) expect(stmt).toContain(`'${id}'`)
+    expect(stmt).toMatch(/set brand = v\.brand, detail = v\.detail, tag = v\.tag,/)
     for (const col of ['price', 'stock', 'image_url', 'is_active']) expect(stmt).not.toContain(col)
   })
 })

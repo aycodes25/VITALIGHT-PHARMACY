@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { CatalogProvider } from './CatalogContext.jsx'
+import { CatalogProvider, useCatalog } from './CatalogContext.jsx'
 import { StoreProvider, useStore } from './StoreContext.jsx'
 
 function Probe() {
@@ -61,8 +61,10 @@ describe('StoreProvider', () => {
     }) })
     function Clamp() {
       const { totals, add, setQty, notice } = useStore()
+      const { status } = useCatalog()
       return (
         <div>
+          <span data-testid="status">{status}</span>
           <span data-testid="count">{totals.count}</span>
           <span data-testid="notice">{notice}</span>
           <button onClick={() => add('live-low', 2)}>add2</button>
@@ -71,8 +73,7 @@ describe('StoreProvider', () => {
       )
     }
     render(<CatalogProvider><StoreProvider><Clamp /></StoreProvider></CatalogProvider>)
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    await waitFor(() => expect(screen.getByTestId('status').textContent).not.toBe('loading'))
     fireEvent.click(screen.getByText('add2'))
     fireEvent.click(screen.getByText('add2'))
     expect(screen.getByTestId('count').textContent).toBe('3')
@@ -87,5 +88,17 @@ describe('StoreProvider', () => {
     setup()
     await waitFor(() => expect(screen.getByTestId('saved').textContent).toBe('1'))
     expect(JSON.parse(localStorage.getItem('vitalight.saved'))).toEqual(['paracetamol-500mg', 'ghost-product'])
+  })
+  it('clamps persisted quantities above stock once the catalogue loads, keeping out-of-stock lines in storage', async () => {
+    localStorage.setItem('vitalight.cart', JSON.stringify({ 'live-low': 7, 'live-none': 2 }))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({
+      products: [
+        { id: 'live-low', name: 'Low', category: 'C', price: 100, stock: 3, art: 'strip', color: 'mint' },
+        { id: 'live-none', name: 'None', category: 'C', price: 100, stock: 0, art: 'strip', color: 'mint' },
+      ],
+      categories: [{ name: 'C', icon: 'x', description: '' }],
+    }) })
+    setup()
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('vitalight.cart'))).toEqual({ 'live-low': 3, 'live-none': 2 }))
   })
 })

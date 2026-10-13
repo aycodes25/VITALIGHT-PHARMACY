@@ -47,6 +47,19 @@ export function StoreProvider({ children }) {
   useEffect(() => save(SAVED_KEY, savedIds), [savedIds])
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
+  // Once stock is known, bring persisted quantities down to it. Out-of-stock lines
+  // stay in storage (the drawer flags them) and are only blocked from the order.
+  useEffect(() => {
+    if (status === 'loading') return
+    const stockById = new Map(products.map((product) => [product.id, Number(product.stock)]))
+    for (const [id, quantity] of Object.entries(cart)) {
+      const stock = stockById.get(id)
+      if (Number.isFinite(stock) && stock >= 1 && quantity > stock) {
+        dispatch({ type: 'set', id, quantity, max: Math.floor(stock) })
+      }
+    }
+  }, [cart, products, status])
+
   const value = useMemo(() => {
     const byId = new Map(products.map((product) => [product.id, product]))
     // Keep raw ids in storage until the catalogue has loaded, then hide orphans.
