@@ -7,7 +7,7 @@ A responsive pharmacy storefront built with React, Vite, and an Express API. Pro
 1. Install Node.js `>=22.22.2 <23` or `>=24.15.0` (required by the installed test tooling, jsdom 30 and Vitest 5) and npm.
 2. Run `npm install`.
 3. Copy `.env.example` to `.env`. Set the Supabase project URL in `VITE_SUPABASE_URL` and `SUPABASE_URL`, and its publishable/anon key in `VITE_SUPABASE_ANON_KEY`. Set the **server-only** `SUPABASE_SERVICE_ROLE_KEY` and add one or more invited, email-confirmed administrator accounts to the comma-separated `ADMIN_EMAILS` entry.
-4. In the Supabase SQL editor run, in order: `supabase/schema.sql`, `supabase/migrations/001_catalogue_v2.sql`, `supabase/migrations/002_seed_catalogue.sql`. This creates the tables, the 12 categories and 120 sample products, and the `product-images` bucket. The catalogue is sample content: review names, prices and stock before taking orders.
+4. In the Supabase SQL editor of a **new** project run, in order: `supabase/schema.sql`, `supabase/migrations/001_catalogue_v2.sql` and, only if you want the sample catalogue, `supabase/migrations/002_seed_catalogue.sql`. This creates the tables, the 12 categories, the `product-images` bucket and (with 002) 120 sample products in total. The sample catalogue is placeholder content: review names, prices and stock before taking orders. Existing live databases follow the runbook below instead.
 5. Optional: set `VITE_PHARMACY_PHONE`, `VITE_PHARMACY_WHATSAPP` and `VITE_PHARMACY_EMAIL` in `.env` so the storefront shows contact buttons.
 6. In Supabase Authentication, invite your admin email address and confirm that it matches an entry in `ADMIN_EMAILS`.
 7. Run `npm run dev` and open the Vite URL printed in the terminal. The admin area is at `/admin`.
@@ -31,6 +31,28 @@ The service-role key is used only by the Express server and must never be added 
 
 Until Supabase and an admin account are configured, the storefront remains browsable using starter catalogue data, while the admin login and order submissions explain which setup is missing. Starter catalogue content and prices in `shared/catalog.js` and `supabase/schema.sql` are examples; replace them with verified stock and pharmacy prices before taking orders. Orders are requests only—not payments. The pharmacy should confirm availability, final price, delivery, and any prescription requirements directly with the customer before fulfilment.
 
+## Deploy runbook for an existing live database
+
+Follow these steps in order when this version replaces one that is already live.
+
+1. **Before deploying**, apply `supabase/migrations/001_catalogue_v2.sql` in the Supabase SQL editor. It adds the `brand`, `rx_required` and `sort_order` columns and the 12 categories that this version reads. The previous version keeps working with these additions.
+2. **Deploy** this version.
+3. **Review and trim the catalogue** in `/admin`: check names, prices, stock and visibility of your real products.
+4. Apply `supabase/migrations/002_seed_catalogue.sql` **only if** you want the 113 sample products published. They are created with `is_active = true` and sample prices and stock, so they appear on the live storefront immediately. Delete or edit them in the admin before taking orders.
+
+Re-running `supabase/schema.sql` re-creates 4 empty legacy categories. Re-run `001_catalogue_v2.sql` afterwards to remove them.
+
+## Real product photos
+
+The storefront shows a product's `image_url` photo instead of the illustration whenever one is set. To attach your own photos in bulk:
+
+1. Take square photos (JPEG, PNG or WebP, up to 5 MB each) and name each file after the product id, for example `paracetamol-500mg.jpg`. Find product ids in the admin product list or in `shared/catalog.js` (the first value of each product row).
+2. Put the files in a folder, for example `./photos`, and make sure `.env` has `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+3. Preview the matches: `npm run images -- ./photos --dry-run`. Nothing is uploaded; the table lists matched, unmatched and invalid files.
+4. Upload for real: `npm run images -- ./photos`.
+
+Photos replace the illustration automatically. You can also upload a photo for a single product from the admin product form. Do not include private or patient information in photos.
+
 ## Troubleshooting
 
-- **Storefront shows the sample catalogue banner and `/api/catalog` returns 503.** After deploying this version, the live Supabase database must have `supabase/migrations/001_catalogue_v2.sql` and `supabase/migrations/002_seed_catalogue.sql` applied. The API selects the new columns `brand`, `rx_required` and `sort_order`; until they exist the query fails, the API answers 503 and the storefront falls back to the bundled sample catalogue.
+- **Storefront shows the sample catalogue banner and `/api/catalog` returns 503.** The live Supabase database is missing `supabase/migrations/001_catalogue_v2.sql`. The API selects the new columns `brand`, `rx_required` and `sort_order`; until they exist the query fails, the API answers 503 and the storefront falls back to the bundled sample catalogue. Apply the migration (see the runbook above).
