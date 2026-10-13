@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app.js'
+import { adminRoutes } from '../routes/admin.js'
+import { createAuth } from '../lib/auth.js'
 import { parseAdminEmails } from '../lib/auth.js'
 import { fakeSupabase } from './fakeSupabase.js'
 
@@ -113,5 +115,44 @@ describe('admin products', () => {
   it('unknown admin routes return 404 for admins', async () => {
     const res = await request(appWith(fakeSupabase({ user: adminUser }))).get('/api/admin/nothing').set('Authorization', 'Bearer good-token')
     expect(res.status).toBe(404)
+  })
+})
+
+describe('POST /api/orders with a database', () => {
+  const valid = { name: 'Ada Okafor', phone: '+234 800 000 0000', address: '12 Example Street', items: [{ productId: 'demo', quantity: 2 }] }
+  it('creates an order whose items carry name and price', async () => {
+    const supabase = fakeSupabase({ results: {
+      products: { data: [{ id: 'demo', name: 'Demo', price: 100, stock: 10 }], error: null },
+      orders: { data: [{ id: 'order-1' }], error: null },
+    } })
+    const res = await request(appWith(supabase)).post('/api/orders').send(valid)
+    expect(res.status).toBe(201)
+    expect(res.body.orderId).toBe('order-1')
+    const insert = supabase.calls.flatMap((c) => c.ops).find(([name]) => name === 'insert')
+    expect(insert[1][0].items).toEqual([{ productId: 'demo', name: 'Demo', price: 100, quantity: 2 }])
+  })
+  it('rejects duplicate product lines', async () => {
+    const supabase = fakeSupabase()
+    const items = [{ productId: 'a', quantity: 5 }, { productId: 'a', quantity: 5 }]
+    const res = await request(appWith(supabase)).post('/api/orders').send({ ...valid, items })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/each product once/i)
+    expect(supabase.calls.length).toBe(0)
+  })
+})
+
+describe('admin route authentication sweep', () => {
+  const supabase = fakeSupabase({ user: adminUser })
+  const auth = createAuth({ supabase, admins: parseAdminEmails('owner@example.com') })
+  const routes = adminRoutes({ supabase, supabaseUrl, auth }).stack
+    .filter((layer) => layer.route)
+    .flatMap((layer) => Object.keys(layer.route.methods).map((method) => ({ method, path: layer.route.path })))
+
+  it('discovers every admin route', () => {
+    expect(routes.length).toBeGreaterThanOrEqual(13)
+  })
+  it.each(routes.map((route) => [`${route.method.toUpperCase()} ${route.path}`, route]))('%s requires authentication', async (_label, { method, path }) => {
+    const res = await request(appWith(supabase))[method](`/api/admin${path.replace(/:\w+/g, 'x')}`)
+    expect(res.status).toBe(401)
   })
 })

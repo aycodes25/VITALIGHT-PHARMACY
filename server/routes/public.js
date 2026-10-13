@@ -62,6 +62,9 @@ export function publicRoutes({ supabase, starter }) {
         return res.status(400).json({ error: 'One or more products in your order are invalid.' })
       }
     }
+    if (new Set(items.map((item) => item.productId)).size !== items.length) {
+      return res.status(400).json({ error: 'Please list each product once and adjust the quantity instead.' })
+    }
 
     if (!supabase) {
       return res.status(503).json({ error: 'Order requests are not available yet. Please contact the pharmacy directly.' })
