@@ -8,6 +8,7 @@ import { useCatalog } from '../context/CatalogContext.jsx'
 import { useStore } from '../context/StoreContext.jsx'
 import ProductRail from '../components/ProductRail.jsx'
 import Icon from '../components/Icon.jsx'
+import LoadingState from '../components/LoadingState.jsx'
 import NotFoundPage from './NotFoundPage.jsx'
 
 export default function ProductPage() {
@@ -16,11 +17,11 @@ export default function ProductPage() {
 }
 
 function ProductDetail({ id }) {
-  const { products, productById } = useCatalog()
+  const { products, productById, status } = useCatalog()
   const { add, toggleSaved, isSaved } = useStore()
   const [quantity, setQuantity] = useState(1)
   const product = productById(id)
-  if (!product) return <NotFoundPage />
+  if (!product) return status === 'loading' ? <LoadingState /> : <NotFoundPage />
 
   const discount = discountPercent(product)
   const inStock = isInStock(product)

@@ -120,8 +120,14 @@ describe('ProductPage', () => {
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('No discount'))
     expect(document.querySelector('del')).toBeNull()
   })
-  it('shows not-found for an unknown product', () => {
-    setup('/product/does-not-exist')
-    expect(screen.getByText(/couldn’t find that page/)).toBeTruthy()
+  it('shows a loading state, not not-found, while the catalogue loads', async () => {
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}))
+    setup('/product/live-only')
+    expect(screen.getByRole('status').textContent).toMatch(/Loading/)
+    expect(screen.queryByText(/couldn’t find that page/)).toBeNull()
+  })
+  it('shows not-found once loading has failed and the product is still missing', async () => {
+    setup('/product/live-only')
+    await waitFor(() => expect(screen.getByText(/couldn’t find that page/)).toBeTruthy())
   })
 })

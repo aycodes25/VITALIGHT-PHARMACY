@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { CatalogProvider } from './CatalogContext.jsx'
 import { StoreProvider, useStore } from './StoreContext.jsx'
 
@@ -53,5 +53,39 @@ describe('StoreProvider', () => {
     localStorage.setItem('vitalight.cart', JSON.stringify({ 'paracetamol-500mg': '5', 'amoxicillin-500mg': 1e9, 'vitamin-c': 2 }))
     setup()
     expect(screen.getByTestId('count').textContent).toBe('2')
+  })
+  it('clamps add and setQty to the known stock', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({
+      products: [{ id: 'live-low', name: 'Low', category: 'C', price: 100, stock: 3, art: 'strip', color: 'mint' }],
+      categories: [{ name: 'C', icon: 'x', description: '' }],
+    }) })
+    function Clamp() {
+      const { totals, add, setQty, notice } = useStore()
+      return (
+        <div>
+          <span data-testid="count">{totals.count}</span>
+          <span data-testid="notice">{notice}</span>
+          <button onClick={() => add('live-low', 2)}>add2</button>
+          <button onClick={() => setQty('live-low', 50)}>set50</button>
+        </div>
+      )
+    }
+    render(<CatalogProvider><StoreProvider><Clamp /></StoreProvider></CatalogProvider>)
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    fireEvent.click(screen.getByText('add2'))
+    fireEvent.click(screen.getByText('add2'))
+    expect(screen.getByTestId('count').textContent).toBe('3')
+    fireEvent.click(screen.getByText('add2'))
+    expect(screen.getByTestId('count').textContent).toBe('3')
+    expect(screen.getByTestId('notice').textContent).toBe('All available stock is in your basket')
+    fireEvent.click(screen.getByText('set50'))
+    expect(screen.getByTestId('count').textContent).toBe('3')
+  })
+  it('hides saved ids that are not in the loaded catalogue but keeps them in storage', async () => {
+    localStorage.setItem('vitalight.saved', JSON.stringify(['paracetamol-500mg', 'ghost-product']))
+    setup()
+    await waitFor(() => expect(screen.getByTestId('saved').textContent).toBe('1'))
+    expect(JSON.parse(localStorage.getItem('vitalight.saved'))).toEqual(['paracetamol-500mg', 'ghost-product'])
   })
 })

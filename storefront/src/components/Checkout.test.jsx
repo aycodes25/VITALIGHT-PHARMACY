@@ -160,3 +160,31 @@ describe('order request', () => {
     expect(screen.getByTestId('count').textContent).toBe('2')
   })
 })
+
+describe('cart drawer stock limits', () => {
+  function mockStock(stock) {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({
+      products: [{ id: 'paracetamol-500mg', name: 'Paracetamol 500 mg Tablets', category: 'Medicines & pain relief', price: 1200, stock, art: 'strip', color: 'mint', rx_required: false }],
+      categories: [{ name: 'Medicines & pain relief', icon: 'x', description: '' }],
+    }) })
+  }
+  it('disables + at the stock limit and shows an availability note', async () => {
+    mockStock(2)
+    setup()
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    fireEvent.click(screen.getByText('add-otc'))
+    fireEvent.click(screen.getByText('open'))
+    expect(screen.getByLabelText('Add one Paracetamol 500 mg Tablets').disabled).toBe(true)
+    expect(screen.getByText('Only 2 available')).toBeTruthy()
+  })
+  it('flags out-of-stock lines and disables the order button', async () => {
+    localStorage.setItem('vitalight.cart', JSON.stringify({ 'paracetamol-500mg': 1 }))
+    mockStock(0)
+    setup()
+    fireEvent.click(screen.getByText('open'))
+    await waitFor(() => expect(screen.getAllByText('Out of stock').length).toBeGreaterThan(0))
+    expect(screen.getByRole('button', { name: /Request this order/ }).disabled).toBe(true)
+    expect(screen.getByText(/Remove out-of-stock items/)).toBeTruthy()
+  })
+})

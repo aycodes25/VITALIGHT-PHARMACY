@@ -35,19 +35,27 @@ function loadCart() {
 }
 
 export function StoreProvider({ children }) {
-  const { products } = useCatalog()
+  const { products, status } = useCatalog()
   const [cart, dispatch] = useReducer(cartReducer, undefined, loadCart)
-  const [saved, setSaved] = useState(() => load(SAVED_KEY, [], Array.isArray))
+  const [savedIds, setSaved] = useState(() => load(SAVED_KEY, [], Array.isArray))
   const [cartOpen, setCartOpen] = useState(false)
   const [orderOpen, setOrderOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const timer = useRef(null)
 
   useEffect(() => save(CART_KEY, cart), [cart])
-  useEffect(() => save(SAVED_KEY, saved), [saved])
+  useEffect(() => save(SAVED_KEY, savedIds), [savedIds])
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
   const value = useMemo(() => {
+    const byId = new Map(products.map((product) => [product.id, product]))
+    // Keep raw ids in storage until the catalogue has loaded, then hide orphans.
+    const saved = status === 'loading' ? savedIds : savedIds.filter((id) => byId.has(id))
+    const limitFor = (id) => {
+      const product = byId.get(id)
+      const stock = Number(product?.stock)
+      return product && Number.isFinite(stock) ? Math.max(0, Math.min(MAX_QUANTITY, Math.floor(stock))) : MAX_QUANTITY
+    }
     const lines = cartLines(cart, products)
     const notify = (message) => {
       setNotice(message)
@@ -63,21 +71,27 @@ export function StoreProvider({ children }) {
       orderOpen,
       notice,
       notify,
-      add: (id, quantity = 1) => { dispatch({ type: 'add', id, quantity }); notify('Added to your basket') },
-      setQty: (id, quantity) => dispatch({ type: 'set', id, quantity }),
+      add: (id, quantity = 1) => {
+        const max = limitFor(id)
+        if (max < 1) { notify('This product is out of stock'); return }
+        if ((cart[id] || 0) >= max) { notify('All available stock is in your basket'); return }
+        dispatch({ type: 'add', id, quantity, max })
+        notify('Added to your basket')
+      },
+      setQty: (id, quantity) => dispatch({ type: 'set', id, quantity, max: limitFor(id) }),
       remove: (id) => dispatch({ type: 'remove', id }),
       clearCart: () => dispatch({ type: 'clear' }),
       isSaved: (id) => saved.includes(id),
       toggleSaved: (id) => {
         setSaved((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
-        notify(saved.includes(id) ? 'Removed from saved items' : 'Saved for later')
+        notify(savedIds.includes(id) ? 'Removed from saved items' : 'Saved for later')
       },
       openCart: () => setCartOpen(true),
       closeCart: () => setCartOpen(false),
       openOrder: () => { setCartOpen(false); setOrderOpen(true) },
       closeOrder: () => setOrderOpen(false),
     }
-  }, [cart, products, saved, cartOpen, orderOpen, notice])
+  }, [cart, products, status, savedIds, cartOpen, orderOpen, notice])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
 }

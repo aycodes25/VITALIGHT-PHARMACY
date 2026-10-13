@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { CatalogProvider } from '../context/CatalogContext.jsx'
-import { StoreProvider } from '../context/StoreContext.jsx'
+import { StoreProvider, useStore } from '../context/StoreContext.jsx'
 import ProductCard from './ProductCard.jsx'
 
 const base = {
@@ -80,5 +80,31 @@ describe('ProductCard', () => {
     unmount()
     setup({ ...base, tag: 'NEW', oldPrice: 1600 })
     expect(screen.queryByText('NEW')).toBeNull()
+  })
+})
+
+describe('ProductCard basket limit', () => {
+  function Notice() {
+    return <span data-testid="notice">{useStore().notice}</span>
+  }
+  it('does not add beyond the stock and says so', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({
+      products: [{ ...base, id: 'live-one', name: 'Live one', stock: 1 }],
+      categories: [{ name: 'Medicines & pain relief', icon: 'x', description: '' }],
+    }) })
+    render(
+      <MemoryRouter>
+        <CatalogProvider><StoreProvider>
+          <ProductCard product={{ ...base, id: 'live-one', name: 'Live one', stock: 1 }} /><Notice />
+        </StoreProvider></CatalogProvider>
+      </MemoryRouter>,
+    )
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    const button = screen.getByLabelText(/Add Live one/)
+    fireEvent.click(button)
+    expect(JSON.parse(localStorage.getItem('vitalight.cart'))).toEqual({ 'live-one': 1 })
+    fireEvent.click(button)
+    expect(JSON.parse(localStorage.getItem('vitalight.cart'))).toEqual({ 'live-one': 1 })
+    expect(screen.getByTestId('notice').textContent).toBe('All available stock is in your basket')
   })
 })

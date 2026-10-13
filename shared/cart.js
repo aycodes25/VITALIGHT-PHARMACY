@@ -3,11 +3,11 @@ export const MAX_QUANTITY = 99
 export function cartReducer(state, action) {
   switch (action.type) {
     case 'add': {
-      const next = Math.min(MAX_QUANTITY, (state[action.id] || 0) + (action.quantity ?? 1))
+      const next = Math.min(action.max ?? MAX_QUANTITY, MAX_QUANTITY, (state[action.id] || 0) + (action.quantity ?? 1))
       return { ...state, [action.id]: next }
     }
     case 'set': {
-      const quantity = Math.min(MAX_QUANTITY, Math.floor(action.quantity))
+      const quantity = Math.min(action.max ?? MAX_QUANTITY, MAX_QUANTITY, Math.floor(action.quantity))
       if (!(quantity >= 1)) {
         const { [action.id]: _removed, ...rest } = state
         return rest
