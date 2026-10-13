@@ -2595,8 +2595,7 @@ export default function Footer() {
           <h3>Help</h3>
           <Link to="/search">Browse all products</Link>
           <Link to="/saved">Saved items</Link>
-          <a href="/admin">Admin sign in</a>
-        </div>
+          </div>
         <div>
           <h3>Talk to us</h3>
           {contact.phone && <a href={`tel:${contact.phone}`}>{contact.phone}</a>}

@@ -54,13 +54,13 @@ on conflict (name) do nothing;
 
 insert into public.products (id, name, category, detail, price, old_price, tag, art, color, stock, featured)
 values
-  ('daily-vitamins', 'Daily Essentials Multivitamin', 'Vitamins & supplements', '30 tablets · everyday wellness', 8500, 10000, 'BESTSELLER', 'vitamin', 'lavender', 20, true),
-  ('vitamin-c', 'Vitamin C + Zinc', 'Vitamins & supplements', 'Effervescent · 20 tablets', 6200, null, 'IMMUNITY', 'vitaminc', 'peach', 20, true),
-  ('gentle-cleanser', 'Gentle Hydrating Cleanser', 'Personal care', 'Sensitive skin · 200 ml', 12400, 14500, 'GENTLE CARE', 'cleanser', 'mint', 20, false),
-  ('first-aid-kit', 'Everyday First Aid Kit', 'First aid', '12 essentials · home & travel', 9800, null, 'JUST IN', 'firstaid', 'blue', 20, true),
-  ('omega-3', 'Omega 3 Fish Oil', 'Vitamins & supplements', 'Heart & brain support · 60 softgels', 15800, null, 'POPULAR', 'omega', 'peach', 20, false),
-  ('digital-thermometer', 'Digital Thermometer', 'Health devices', 'Fast reading · easy to use', 7500, null, 'AT-HOME CARE', 'device', 'lavender', 20, false),
-  ('oral-rehydration-salts', 'Oral Rehydration Salts', 'Medicines', 'Single-use sachets · ask our pharmacist', 1200, null, 'PHARMACIST PICK', 'medicine', 'mint', 20, false)
+  ('daily-vitamins', 'Daily Essentials Multivitamin', 'Vitamins & supplements', '30 tablets', 8500, 10000, 'POPULAR', 'vitamin', 'lavender', 20, true),
+  ('vitamin-c', 'Vitamin C + Zinc', 'Vitamins & supplements', 'Effervescent · 20 tablets', 6200, null, '', 'vitaminc', 'peach', 20, true),
+  ('gentle-cleanser', 'Gentle Hydrating Cleanser', 'Personal care', '200 ml', 12400, 14500, '', 'cleanser', 'mint', 20, false),
+  ('first-aid-kit', 'Everyday First Aid Kit', 'First aid', '12 essentials', 9800, null, 'JUST IN', 'firstaid', 'blue', 20, true),
+  ('omega-3', 'Omega 3 Fish Oil', 'Vitamins & supplements', '60 softgels', 15800, null, 'POPULAR', 'omega', 'peach', 20, false),
+  ('digital-thermometer', 'Digital Thermometer', 'Health devices', '1 thermometer', 7500, null, '', 'device', 'lavender', 20, false),
+  ('oral-rehydration-salts', 'Oral Rehydration Salts', 'Medicines', 'Single-use sachets · ask our pharmacist', 1200, null, 'POPULAR', 'medicine', 'mint', 20, false)
 on conflict (id) do nothing;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -69,3 +69,8 @@ on conflict (id) do update
 set public = excluded.public,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
+
+-- After running this file, run supabase/migrations/001_catalogue_v2.sql and then
+-- supabase/migrations/002_seed_catalogue.sql in the Supabase SQL editor.
+-- Note: running 002 again resets category descriptions/order and the 7 original products'
+-- brand/detail/featured/sort_order/rx_required (never price, stock, images or visibility).
