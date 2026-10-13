@@ -29,7 +29,7 @@ export default function Footer() {
           <h3>Talk to us</h3>
           {contact.phone && <a href={`tel:${contact.phone}`}>{contact.phone}</a>}
           {contact.whatsapp && <a href={`https://wa.me/${contact.whatsapp}`}>WhatsApp</a>}
-          <a href={`mailto:${contact.email}`}>{contact.email}</a>
+          {contact.email && <a href={`mailto:${contact.email}`}>{contact.email}</a>}
         </div>
       </div>
       <div className="container footer-bottom">

@@ -4,7 +4,7 @@ A responsive pharmacy storefront built with React, Vite, and an Express API. Pro
 
 ## Run locally
 
-1. Install Node.js 20.19+ and npm.
+1. Install Node.js `>=22.22.2 <23` or `>=24.15.0` (required by the installed test tooling, jsdom 30 and Vitest 5) and npm.
 2. Run `npm install`.
 3. Copy `.env.example` to `.env`. Set the Supabase project URL in `VITE_SUPABASE_URL` and `SUPABASE_URL`, and its publishable/anon key in `VITE_SUPABASE_ANON_KEY`. Set the **server-only** `SUPABASE_SERVICE_ROLE_KEY` and add one or more invited, email-confirmed administrator accounts to the comma-separated `ADMIN_EMAILS` entry.
 4. In the Supabase SQL editor run, in order: `supabase/schema.sql`, `supabase/migrations/001_catalogue_v2.sql`, `supabase/migrations/002_seed_catalogue.sql`. This creates the tables, the 12 categories and 120 sample products, and the `product-images` bucket. The catalogue is sample content: review names, prices and stock before taking orders.

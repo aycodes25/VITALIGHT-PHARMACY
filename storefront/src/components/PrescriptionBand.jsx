@@ -13,7 +13,7 @@ export default function PrescriptionBand() {
         <div className="rx-actions">
           {contact.phone && <a className="btn btn-primary" href={`tel:${contact.phone}`}>Call the pharmacy</a>}
           {contact.whatsapp && <a className="btn btn-outline-light" href={`https://wa.me/${contact.whatsapp}`}>WhatsApp us</a>}
-          {!contact.phone && !contact.whatsapp && <a className="btn btn-primary" href={`mailto:${contact.email}`}>Email the pharmacy <Icon name="arrow" size={16} /></a>}
+          {!contact.phone && !contact.whatsapp && contact.email && <a className="btn btn-primary" href={`mailto:${contact.email}`}>Email the pharmacy <Icon name="arrow" size={16} /></a>}
         </div>
       </div>
     </section>
