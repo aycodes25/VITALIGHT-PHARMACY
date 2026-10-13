@@ -54,15 +54,15 @@
 .product-card { position: relative; display: flex; flex-direction: column; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; transition: box-shadow .2s, transform .2s; }
 .product-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
 .card-media { position: relative; }
-.badges { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.badges { z-index: 2; position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .badge { padding: 4px 9px; border-radius: 999px; font: 800 11px/1.2 var(--font-head); letter-spacing: .04em; }
 .badge-sale { background: var(--pink); color: var(--navy-deep); }
 .badge-rx { background: var(--navy); color: var(--white); }
 .badge-tag { background: var(--white); color: var(--navy); border: 1px solid var(--line); }
-.save-btn { position: absolute; top: 8px; right: 8px; width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--white); box-shadow: var(--shadow-sm); display: grid; place-items: center; }
+.save-btn { z-index: 2; position: absolute; top: 8px; right: 8px; width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--white); box-shadow: var(--shadow-sm); display: grid; place-items: center; }
 .save-btn.is-saved { color: var(--pink-dark); }
 .save-btn.is-saved svg { fill: currentColor; }
-.out-of-stock { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255, 255, 255, .7); border-radius: var(--radius); font-weight: 800; }
+.out-of-stock { z-index: 1; pointer-events: none; position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255, 255, 255, .7); border-radius: var(--radius); font-weight: 800; }
 .card-body { display: flex; flex-direction: column; gap: 4px; padding: 12px 4px 4px; flex: 1; }
 .card-brand { font-size: 12px; font-weight: 700; color: var(--navy-soft); text-transform: uppercase; letter-spacing: .06em; }
 .card-title { font-size: 15px; font-weight: 800; }

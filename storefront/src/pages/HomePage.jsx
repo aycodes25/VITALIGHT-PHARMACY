@@ -19,8 +19,8 @@ export default function HomePage() {
   const available = products.filter(isInStock)
   const deals = sortProducts(available.filter((p) => discountPercent(p) > 0), 'discount').slice(0, 10)
   const bestsellers = sortProducts(available.filter((p) => p.featured), 'featured').slice(0, 10)
-  const fresh = available.filter((p) => /new|just in/i.test(p.tag || ''))
-  const arrivals = (fresh.length ? fresh : available.slice(-10)).slice(0, 10)
+  const fresh = available.filter((p) => /\bnew\b|\bjust in\b/i.test(p.tag || ''))
+  const arrivals = fresh.slice(0, 10)
 
   return (
     <>

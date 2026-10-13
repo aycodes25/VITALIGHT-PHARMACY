@@ -32,7 +32,7 @@ export default function ProductCard({ product }) {
         <h3 className="card-title"><Link to={`/product/${product.id}`}>{product.name}</Link></h3>
         <p className="card-detail">{product.detail}</p>
         <div className="card-bottom">
-          <span className="price">{formatPrice(product.price)}{product.oldPrice && <del>{formatPrice(product.oldPrice)}</del>}</span>
+          <span className="price">{formatPrice(product.price)}{discount > 0 && <del>{formatPrice(product.oldPrice)}</del>}</span>
           <button className="add-btn" type="button" disabled={!inStock} aria-label={`Add ${product.name} to basket`} onClick={() => add(product.id)}>
             <Icon name="plus" size={18} />
           </button>

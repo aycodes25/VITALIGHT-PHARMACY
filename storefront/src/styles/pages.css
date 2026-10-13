@@ -25,6 +25,9 @@
 .rx-band { display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; align-items: center; background: var(--navy); color: var(--white); border-radius: calc(var(--radius) + 6px); padding: clamp(24px, 4vw, 44px); }
 .rx-band h2 { color: var(--white); margin: 8px 0; font-size: clamp(24px, 3vw, 34px); }
 .rx-band p:not(.eyebrow) { color: #c9d3e3; max-width: 58ch; }
+.rx-band .eyebrow { color: #ffb3d4; }
+.btn-outline-light { color: var(--white); border: 2px solid var(--white); background: transparent; }
+.btn-outline-light:hover { background: var(--white); color: var(--navy); }
 .rx-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
 .concerns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .concern { display: grid; gap: 6px; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); transition: all .2s; }
