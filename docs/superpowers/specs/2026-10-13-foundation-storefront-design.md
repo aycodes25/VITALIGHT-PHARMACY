@@ -90,11 +90,12 @@ Twelve categories with about 10 products each:
 11. Health devices & diagnostics
 12. Fitness & nutrition
 
-**Schema migration (`001_catalogue_v2.sql`):**
+**Schema migration (`001_catalogue_v2.sql`, plus generated `002_seed_catalogue.sql`):**
 
-- `products`: add `slug text unique`, `brand text`, `rx_required boolean default false`, `sort_order int default 0`. Widen the `art` check constraint to about 14 artwork types.
-- `categories`: add `slug text unique`. Existing 5 category names are retained or mapped to the new set so existing rows are not orphaned (the `on update cascade` foreign key supports renames).
-- Idempotent seed (`on conflict do nothing`), mirrored in `shared/catalog.js` as the offline fallback.
+- `products`: add `brand text`, `rx_required boolean default false`, `sort_order int default 0`. Widen the `art` check constraint to exactly 14 keys: the existing 7 plus `tube`, `sachet`, `strip`, `dropper`, `spray`, `jar`, `box`.
+- No `slug` columns: product `id` is already a URL-safe unique slug; category slugs are derived from the name at runtime.
+- Legacy categories are renamed in place (`Medicines`, `Personal care`, `First aid`, `Health devices`) so existing products follow via `ON UPDATE CASCADE`.
+- The seed SQL is generated from `shared/catalog.js` and is idempotent (`on conflict do nothing` for products).
 
 **Artwork:** SVG components in `shared/art/` (bottle, box, tube, sachet, blister strip, dropper, spray, device, kit, jar, pump, pouch, diapers, glucometer) tinted per category. Used by both storefront and admin previews. An uploaded `image_url` always takes precedence.
 

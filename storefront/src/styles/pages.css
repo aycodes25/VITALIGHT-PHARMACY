@@ -64,6 +64,7 @@
 .price-inputs input { width: 100%; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 10px; }
 .sort { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
 .sort select { border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; background: var(--white); }
+.browser .section-head { flex-wrap: wrap; }
 .result-count { margin-bottom: 14px; color: var(--navy-soft); font-weight: 700; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 28px; }
 @media (max-width: 900px) {

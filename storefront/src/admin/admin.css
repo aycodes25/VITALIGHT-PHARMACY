@@ -1,3 +1,10 @@
+.admin-login-page {
+  --admin-navy: #102d4f;
+  --admin-pink: #fd3f92;
+  --admin-ink: #203650;
+  --admin-muted: #8794a5;
+  --admin-line: #e9edf2;
+}
 .admin-shell {
   --admin-navy: #102d4f;
   --admin-pink: #fd3f92;
