@@ -12,6 +12,10 @@ import NotFoundPage from './NotFoundPage.jsx'
 
 export default function ProductPage() {
   const { id } = useParams()
+  return <ProductDetail key={id} id={id} />
+}
+
+function ProductDetail({ id }) {
   const { products, productById } = useCatalog()
   const { add, toggleSaved, isSaved } = useStore()
   const [quantity, setQuantity] = useState(1)
@@ -37,7 +41,7 @@ export default function ProductPage() {
           <p className="detail-text">{product.detail}</p>
           <p className="detail-price">
             <span className="price big">{formatPrice(product.price)}</span>
-            {product.oldPrice && <del>{formatPrice(product.oldPrice)}</del>}
+            {discount > 0 && <del>{formatPrice(product.oldPrice)}</del>}
             {discount > 0 && <span className="badge badge-sale">-{discount}%</span>}
           </p>
           <p className={`stock ${inStock ? 'in' : 'out'}`}>
@@ -54,7 +58,7 @@ export default function ProductPage() {
               <span>{quantity}</span>
               <button type="button" aria-label="Increase quantity" disabled={quantity >= maxQuantity} onClick={() => setQuantity(quantity + 1)}><Icon name="plus" size={14} /></button>
             </div>
-            <button className="btn btn-primary" type="button" disabled={!inStock} onClick={() => add(product.id, quantity)}>Add to basket</button>
+            <button className="btn btn-primary" type="button" disabled={!inStock} onClick={() => add(product.id, Math.min(quantity, maxQuantity))}>Add to basket</button>
             <button className={`icon-btn ${saved ? 'is-saved' : ''}`} type="button" aria-pressed={saved} aria-label={saved ? 'Remove from saved items' : 'Save for later'} onClick={() => toggleSaved(product.id)}>
               <Icon name="heart" />
             </button>
