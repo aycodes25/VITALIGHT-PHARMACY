@@ -141,9 +141,14 @@ describe('POST /api/orders validation', () => {
     expect((await request(appWith(null)).post('/api/orders').send(valid)).status).toBe(503)
   })
   it('rejects orders exceeding stock', async () => {
-    const supabase = fakeSupabase({ results: { products: { data: [{ id: 'demo', stock: 0 }], error: null } } })
-    const res = await request(appWith(supabase)).post('/api/orders').send(valid)
+    const supabase = fakeSupabase({ user: { id: 'u2', email: 'a@example.com' }, results: { products: { data: [{ id: 'demo', stock: 0 }], error: null } } })
+    const res = await request(appWith(supabase)).post('/api/orders').set('Authorization', 'Bearer good-token').send(valid)
     expect(res.status).toBe(409)
+  })
+  it('requires a signed-in customer', async () => {
+    const supabase = fakeSupabase({ results: { products: { data: [{ id: 'demo', name: 'Demo', price: 1, stock: 5 }], error: null } } })
+    const res = await request(appWith(supabase)).post('/api/orders').send(valid)
+    expect(res.status).toBe(401)
   })
 })
 
@@ -250,11 +255,11 @@ describe('admin products', () => {
 describe('POST /api/orders with a database', () => {
   const valid = { name: 'Ada Okafor', phone: '+234 800 000 0000', address: '12 Example Street', items: [{ productId: 'demo', quantity: 2 }] }
   it('creates an order whose items carry name and price', async () => {
-    const supabase = fakeSupabase({ results: {
+    const supabase = fakeSupabase({ user: { id: 'u2', email: 'a@example.com' }, results: {
       products: { data: [{ id: 'demo', name: 'Demo', price: 100, stock: 10 }], error: null },
       orders: { data: [{ id: 'order-1' }], error: null },
     } })
-    const res = await request(appWith(supabase)).post('/api/orders').send(valid)
+    const res = await request(appWith(supabase)).post('/api/orders').set('Authorization', 'Bearer good-token').send(valid)
     expect(res.status).toBe(201)
     expect(res.body.orderId).toBe('order-1')
     const insert = supabase.calls.flatMap((c) => c.ops).find(([name]) => name === 'insert')

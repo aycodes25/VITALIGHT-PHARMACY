@@ -6,6 +6,7 @@ import { contact } from '../config.js'
 import { useStore } from '../context/StoreContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import Icon from './Icon.jsx'
+import SignInPrompt from './SignInPrompt.jsx'
 
 const emptyForm = { name: '', phone: '', address: '' }
 
@@ -16,7 +17,7 @@ export default function OrderModal() {
   const [error, setError] = useState('')
   const [placed, setPlaced] = useState(null)
   const inFlight = useRef(false)
-  const { user, session } = useAuth()
+  const { configured, loading, user, session } = useAuth()
   const token = session?.access_token ?? ''
 
   // Signed-in customers get their saved details prefilled (never overwriting what they typed).
@@ -52,6 +53,7 @@ export default function OrderModal() {
   }, [orderOpen, closeStoreOrder])
 
   if (!orderOpen) return null
+  if (configured && !loading && !user) return <SignInPrompt onClose={closeOrder} />
 
   async function onSubmit(event) {
     event.preventDefault()

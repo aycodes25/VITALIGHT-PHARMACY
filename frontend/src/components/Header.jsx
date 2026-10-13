@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import logoMark from '../../../shared/assets/logo.png'
 import wordmark from '../../../shared/assets/vitalight logo.png'
@@ -19,6 +19,25 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
+  const rail = useRef(null)
+  const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: false })
+
+  // Mouse users can drag the category row like a carousel; touch already scrolls natively.
+  const onRailDown = (event) => {
+    if (event.pointerType !== 'mouse' || !rail.current) return
+    drag.current = { active: true, startX: event.clientX, startScroll: rail.current.scrollLeft, moved: false }
+  }
+  const onRailMove = (event) => {
+    const state = drag.current
+    if (!state.active || !rail.current) return
+    const delta = event.clientX - state.startX
+    if (Math.abs(delta) > 5) state.moved = true
+    if (state.moved) rail.current.scrollLeft = state.startScroll - delta
+  }
+  const endRailDrag = () => { drag.current.active = false }
+  const onRailClick = (event) => {
+    if (drag.current.moved) { event.preventDefault(); drag.current.moved = false }
+  }
 
   useEffect(() => { setMenuOpen(false); setFocused(false) }, [location.pathname, location.search])
   useEffect(() => {
@@ -75,8 +94,8 @@ export default function Header() {
             )}
           </form>
           <div className="header-actions">
-            <Link className="icon-btn" to={user ? '/account' : '/login'} aria-label={user ? 'My account' : 'Sign in'}>
-              <Icon name="user" />
+            <Link className={user ? 'icon-btn' : 'btn btn-outline account-link'} to={user ? '/account' : '/login'} aria-label={user ? 'My account' : 'Sign in'}>
+              <Icon name="user" />{!user && <span className="account-link-text">Sign in</span>}
             </Link>
             <Link className="icon-btn" to="/saved" aria-label={`Saved items, ${saved.length}`}>
               <Icon name="heart" />{saved.length > 0 && <span className="count-badge">{saved.length}</span>}
@@ -87,7 +106,16 @@ export default function Header() {
           </div>
         </div>
         <nav className="category-nav" aria-label="Categories">
-          <div className="container category-nav-inner">
+          <div
+            ref={rail}
+            className="container category-nav-inner"
+            onPointerDown={onRailDown}
+            onPointerMove={onRailMove}
+            onPointerUp={endRailDrag}
+            onPointerLeave={endRailDrag}
+            onClickCapture={onRailClick}
+            onDragStart={(event) => event.preventDefault()}
+          >
             {categories.map((category) => (
               <NavLink key={category.name} to={`/category/${categorySlug(category.name)}`} className={({ isActive }) => (isActive ? 'active' : '')}>
                 <span className="cat-circle" aria-hidden="true">{category.icon}</span>

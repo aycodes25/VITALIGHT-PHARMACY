@@ -98,6 +98,11 @@ export function publicRoutes({ supabase, starter, now = Date.now }) {
       return res.status(503).json({ error: 'Order requests are not available yet. Please contact the pharmacy directly.' })
     }
 
+    const customer = await customerFromRequest(supabase, req)
+    if (!customer) {
+      return res.status(401).json({ error: 'Sign in or create an account to request an order.' })
+    }
+
     try {
       const { data: activeProducts, error: productError } = await supabase
         .from('products')
@@ -117,11 +122,10 @@ export function publicRoutes({ supabase, starter, now = Date.now }) {
         const product = available.get(item.productId)
         return { productId: item.productId, name: product.name, price: product.price, quantity: item.quantity }
       })
-      const customer = await customerFromRequest(supabase, req)
       const { data, error } = await supabase
         .from('orders')
         .insert({
-          ...(customer ? { user_id: customer.id } : {}),
+          user_id: customer.id,
           customer_name: customerName,
           phone: customerPhone,
           delivery_address: deliveryAddress,

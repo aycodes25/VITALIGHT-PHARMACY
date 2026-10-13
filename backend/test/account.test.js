@@ -60,9 +60,8 @@ describe('account routes', () => {
     const insert = signedIn.calls.find((call) => call.table === 'orders').ops.find(([op]) => op === 'insert')[1][0]
     expect(insert.user_id).toBe('user-1')
 
-    const guest = fakeSupabase({ user: customer, results: { products, orders: { data: [{ id: 'o2' }], error: null } } })
-    await request(appWith(guest)).post('/api/orders').send(body).expect(201)
-    const guestInsert = guest.calls.find((call) => call.table === 'orders').ops.find(([op]) => op === 'insert')[1][0]
-    expect(guestInsert).not.toHaveProperty('user_id')
+    const guest = fakeSupabase({ user: customer, results: { products } })
+    await request(appWith(guest)).post('/api/orders').send(body).expect(401)
+    expect(guest.calls.some((call) => call.table === 'orders')).toBe(false)
   })
 })
