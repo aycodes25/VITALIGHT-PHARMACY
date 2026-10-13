@@ -69,3 +69,6 @@ on conflict (id) do update
 set public = excluded.public,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
+
+-- After running this file, run supabase/migrations/001_catalogue_v2.sql and then
+-- supabase/migrations/002_seed_catalogue.sql in the Supabase SQL editor.
