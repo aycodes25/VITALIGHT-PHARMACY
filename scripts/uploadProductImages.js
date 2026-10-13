@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
-import { MAX_IMAGE_BYTES, detectImageType } from '../server/lib/images.js'
+import { MAX_IMAGE_BYTES, detectImageType } from '../backend/lib/images.js'
 
 const BUCKET = 'product-images'
 const FILE_PATTERN = /^(.+)\.(jpe?g|png|webp)$/i

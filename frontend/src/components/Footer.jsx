@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
-import logo from '../../../shared/assets/logo.png'
+import logoMark from '../../../shared/assets/logo.png'
+import wordmark from '../../../shared/assets/vitalight logo.png'
 import { contact } from '../config.js'
+import { whatsAppLink } from '../../../shared/whatsapp.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { categorySlug } from '../../../shared/catalogTools.js'
 
@@ -10,7 +12,7 @@ export default function Footer() {
     <footer className="site-footer">
       <div className="container footer-grid">
         <div>
-          <Link className="brand" to="/"><img src={logo} alt="" /><span className="brand-name" style={{ color: '#fff' }}>VITALIGHT<small style={{ color: '#9fb0c8' }}>PHARMACY</small></span></Link>
+          <Link className="brand footer-brand" to="/"><img className="brand-mark" src={logoMark} alt="" /><img className="brand-wordmark" src={wordmark} alt="Vitalight Pharmacy" /></Link>
           <p style={{ marginTop: 14 }}>Your health, our priority. A little more care in every day.</p>
         </div>
         <div>
@@ -23,12 +25,11 @@ export default function Footer() {
           <h3>Help</h3>
           <Link to="/search">Browse all products</Link>
           <Link to="/saved">Saved items</Link>
-          <a href="/admin">Admin sign in</a>
         </div>
         <div>
           <h3>Talk to us</h3>
           {contact.phone && <a href={`tel:${contact.phone}`}>{contact.phone}</a>}
-          {contact.whatsapp && <a href={`https://wa.me/${contact.whatsapp}`}>WhatsApp</a>}
+          {contact.whatsapp && <a href={whatsAppLink(contact.whatsapp)}>Chat on WhatsApp</a>}
           {contact.email && <a href={`mailto:${contact.email}`}>{contact.email}</a>}
         </div>
       </div>

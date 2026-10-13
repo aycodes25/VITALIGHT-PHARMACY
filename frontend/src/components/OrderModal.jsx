@@ -1,29 +1,37 @@
 import { useEffect, useRef, useState } from 'react'
 import { submitOrder } from '../api.js'
 import { formatPrice } from '../../../shared/money.js'
+import { buildOrderMessage, whatsAppLink } from '../../../shared/whatsapp.js'
+import { contact } from '../config.js'
 import { useStore } from '../context/StoreContext.jsx'
 import Icon from './Icon.jsx'
 
 const emptyForm = { name: '', phone: '', address: '' }
 
 export default function OrderModal() {
-  const { orderOpen, closeOrder, lines, totals, clearCart, notify } = useStore()
+  const { orderOpen, closeOrder: closeStoreOrder, lines, totals, clearCart, notify } = useStore()
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [placed, setPlaced] = useState(null)
   const inFlight = useRef(false)
+
+  function closeOrder() {
+    setPlaced(null)
+    closeStoreOrder()
+  }
 
   useEffect(() => {
     if (!orderOpen) return undefined
     function onKeyDown(event) {
-      if (event.key === 'Escape') closeOrder()
+      if (event.key === 'Escape') { setPlaced(null); closeStoreOrder() }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       setError('')
     }
-  }, [orderOpen, closeOrder])
+  }, [orderOpen, closeStoreOrder])
 
   if (!orderOpen) return null
 
@@ -34,13 +42,14 @@ export default function OrderModal() {
     setSubmitting(true)
     setError('')
     try {
-      await submitOrder({
+      const summary = { ...form, lines, total: totals.total, hasRx: totals.hasRx }
+      const result = await submitOrder({
         ...form,
         items: lines.map(({ product, quantity }) => ({ productId: product.id, quantity })),
       })
+      setPlaced({ ...summary, orderId: result?.orderId || '' })
       clearCart()
       setForm(emptyForm)
-      closeOrder()
       notify('Order request received. We’ll be in touch soon.')
     } catch (submitError) {
       setError(submitError.message || 'We could not submit your request. Please try again.')
@@ -48,6 +57,27 @@ export default function OrderModal() {
       inFlight.current = false
       setSubmitting(false)
     }
+  }
+
+  if (placed) {
+    const reference = placed.orderId ? String(placed.orderId).slice(0, 8).toUpperCase() : ''
+    const href = whatsAppLink(contact.whatsapp, buildOrderMessage(placed))
+    return (
+      <div className="overlay center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeOrder() }}>
+        <section className="modal order-success" role="dialog" aria-modal="true" aria-labelledby="order-title">
+          <h2 id="order-title">Order request received</h2>
+          {reference && <p style={{ marginTop: 8 }}>Reference: <strong>#{reference}</strong></p>}
+          <p style={{ marginTop: 8 }}>Our pharmacy team will confirm availability, delivery and pricing with you shortly.</p>
+          {href && (
+            <>
+              <p style={{ marginTop: 8 }}>Tap the button to send your order details straight to our customer care on WhatsApp so we can confirm it faster.</p>
+              <a className="btn btn-primary btn-block" href={href} target="_blank" rel="noopener noreferrer">Send order on WhatsApp</a>
+            </>
+          )}
+          <button className="btn btn-outline btn-block" type="button" onClick={closeOrder}>Done</button>
+        </section>
+      </div>
+    )
   }
 
   return (

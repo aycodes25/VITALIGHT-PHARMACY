@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import logo from '../../../shared/assets/logo.png'
+import wordmark from '../../../shared/assets/vitalight logo.png'
 import './admin.css'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -352,7 +353,7 @@ function Admin() {
       <main className="admin-login-page">
         <a className="admin-back-link" href="/">← Back to Vitalight Pharmacy</a>
         <section className="admin-login-card">
-          <img src={logo} alt="" />
+          <div className="admin-login-brand"><img src={logo} alt="" /><img src={wordmark} alt="Vitalight Pharmacy" /></div>
           <span className="admin-login-kicker">VITALIGHT PHARMACY · ADMIN</span>
           <h1>Your pharmacy,<br /><em>in good hands.</em></h1>
           <p>Sign in with an approved admin account to manage your products, categories, and customer orders.</p>

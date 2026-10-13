@@ -7,9 +7,11 @@
     "node": ">=22.22.2 <23 || >=24.15.0"
   },
   "scripts": {
-    "dev": "concurrently -k \"vite\" \"node --watch server/index.js\"",
+    "dev": "concurrently -k \"vite\" \"node --watch backend/index.js\"",
+    "dev:frontend": "vite",
+    "dev:backend": "node --watch backend/index.js",
     "build": "vite build",
-    "start": "node server/index.js",
+    "start": "node backend/index.js",
     "preview": "vite preview",
     "test": "vitest run",
     "images": "node scripts/upload-product-images.js"

@@ -6,6 +6,6 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['{shared,server,storefront,scripts}/**/*.test.{js,jsx}'],
+    include: ['{shared,backend,frontend,scripts}/**/*.test.{js,jsx}'],
   },
 })

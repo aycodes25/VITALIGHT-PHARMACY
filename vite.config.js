@@ -5,11 +5,11 @@ import { fileURLToPath } from 'node:url'
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
-  root: 'storefront',
+  root: 'frontend',
   envDir: projectRoot,
   plugins: [react()],
   build: {
-    outDir: fileURLToPath(new URL('./dist/storefront', import.meta.url)),
+    outDir: fileURLToPath(new URL('./dist/frontend', import.meta.url)),
     emptyOutDir: true,
   },
   server: {

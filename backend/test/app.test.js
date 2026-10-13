@@ -19,7 +19,7 @@ function appWith(supabase, admins = 'owner@example.com') {
     supabaseUrl,
     admins: parseAdminEmails(admins),
     starter,
-    clientDistPath: 'dist/storefront',
+    clientDistPath: 'dist/frontend',
   })
 }
 

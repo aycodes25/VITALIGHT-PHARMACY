@@ -163,7 +163,9 @@
 .admin-back-link { position: absolute; top: 25px; left: 30px; color: #718198; font-size: 10px; }
 .admin-back-link:hover { color: #e53580; }
 .admin-login-card { width: min(420px, 100%); padding: 33px; border: 1px solid #edf0f3; border-radius: 7px; background: white; box-shadow: 0 22px 70px #16345610; }
-.admin-login-card > img { width: 63px; height: 63px; display: block; margin-bottom: 20px; object-fit: contain; }
+.admin-login-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+.admin-login-brand img { height: 56px; width: auto; max-width: 100%; display: block; object-fit: contain; }
+.admin-login-brand img + img { height: 42px; }
 .admin-login-kicker { color: #8996a6; font-size: 8px; font-weight: 700; letter-spacing: .18em; }
 .admin-login-card h1 { margin: 11px 0 9px; color: #102d4f; font: 700 29px/1.22 'Manrope', sans-serif; letter-spacing: -.045em; }
 .admin-login-card h1 em { color: #fd3f92; font-style: normal; }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import logo from '../../../shared/assets/logo.png'
+import logoMark from '../../../shared/assets/logo.png'
+import wordmark from '../../../shared/assets/vitalight logo.png'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useStore } from '../context/StoreContext.jsx'
 import { categorySlug, filterProducts } from '../../../shared/catalogTools.js'
@@ -44,8 +45,8 @@ export default function Header() {
             <Icon name={menuOpen ? 'close' : 'menu'} />
           </button>
           <Link className="brand" to="/" aria-label="Vitalight Pharmacy home">
-            <img src={logo} alt="" />
-            <span className="brand-name">VITALIGHT<small>PHARMACY</small></span>
+            <img className="brand-mark" src={logoMark} alt="" />
+            <img className="brand-wordmark" src={wordmark} alt="Vitalight Pharmacy" />
           </Link>
           <form
             className="search"
@@ -82,9 +83,6 @@ export default function Header() {
         </div>
         <nav className="category-nav" aria-label="Categories">
           <div className="container category-nav-inner">
-            <button className="all-categories" type="button" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>
-              <Icon name="menu" size={16} /> All categories
-            </button>
             {categories.map((category) => (
               <NavLink key={category.name} to={`/category/${categorySlug(category.name)}`} className={({ isActive }) => (isActive ? 'active' : '')}>
                 {category.name}

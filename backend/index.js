@@ -20,7 +20,7 @@ const app = createApp({
   supabaseUrl,
   admins: parseAdminEmails(process.env.ADMIN_EMAILS),
   starter: { products, categories },
-  clientDistPath: path.resolve(__dirname, '..', 'dist', 'storefront'),
+  clientDistPath: path.resolve(__dirname, '..', 'dist', 'frontend'),
 })
 
 app.listen(port, () => {
