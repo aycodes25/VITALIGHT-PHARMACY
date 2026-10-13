@@ -106,6 +106,7 @@
 .footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr; gap: 32px; padding-block: 48px; }
 .site-footer h3 { color: var(--white); font-size: 15px; margin-bottom: 14px; }
 .site-footer a { display: block; padding: 4px 0; }
+.site-footer a.brand { display: inline-flex; padding: 0; }
 .site-footer a:hover { color: #ffb3d4; }
 .footer-bottom { border-top: 1px solid rgba(255, 255, 255, .12); padding-block: 18px; font-size: 13px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 

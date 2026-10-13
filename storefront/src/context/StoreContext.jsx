@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { cartLines, cartReducer, cartTotals } from '../../../shared/cart.js'
+import { MAX_QUANTITY, cartLines, cartReducer, cartTotals } from '../../../shared/cart.js'
 import { useCatalog } from './CatalogContext.jsx'
 
 const StoreContext = createContext(null)
@@ -25,9 +25,18 @@ function save(key, value) {
 
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 
+function loadCart() {
+  const stored = load(CART_KEY, {}, isPlainObject)
+  return Object.fromEntries(
+    Object.entries(stored).filter(
+      ([id, quantity]) => typeof id === 'string' && Number.isInteger(quantity) && quantity >= 1 && quantity <= MAX_QUANTITY,
+    ),
+  )
+}
+
 export function StoreProvider({ children }) {
   const { products } = useCatalog()
-  const [cart, dispatch] = useReducer(cartReducer, undefined, () => load(CART_KEY, {}, isPlainObject))
+  const [cart, dispatch] = useReducer(cartReducer, undefined, loadCart)
   const [saved, setSaved] = useState(() => load(SAVED_KEY, [], Array.isArray))
   const [cartOpen, setCartOpen] = useState(false)
   const [orderOpen, setOrderOpen] = useState(false)

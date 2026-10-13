@@ -49,4 +49,9 @@ describe('StoreProvider', () => {
     setup()
     expect(screen.getByTestId('count').textContent).toBe('0')
   })
+  it('drops invalid persisted cart entries', () => {
+    localStorage.setItem('vitalight.cart', JSON.stringify({ 'paracetamol-500mg': '5', 'amoxicillin-500mg': 1e9, 'vitamin-c': 2 }))
+    setup()
+    expect(screen.getByTestId('count').textContent).toBe('2')
+  })
 })

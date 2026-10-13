@@ -10,6 +10,7 @@ import Icon from './Icon.jsx'
 export default function Header() {
   const { categories, products } = useCatalog()
   const { totals, saved, openCart } = useStore()
+  const basketLabel = `Open basket, ${totals.count} ${totals.count === 1 ? 'item' : 'items'}`
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -46,15 +47,19 @@ export default function Header() {
             <img src={logo} alt="" />
             <span className="brand-name">VITALIGHT<small>PHARMACY</small></span>
           </Link>
-          <form className="search" role="search" onSubmit={submit}>
+          <form
+            className="search"
+            role="search"
+            onSubmit={submit}
+            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false) }}
+          >
             <span className="search-icon"><Icon name="search" size={18} /></span>
             <input
               aria-label="Search products"
               placeholder="Search medicines, vitamins, skin care…"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => { setQuery(event.target.value); setFocused(true) }}
               onFocus={() => setFocused(true)}
-              onBlur={() => window.setTimeout(() => setFocused(false), 150)}
             />
             {focused && suggestions.length > 0 && (
               <ul className="suggestions">
@@ -70,8 +75,8 @@ export default function Header() {
             <Link className="icon-btn" to="/saved" aria-label={`Saved items, ${saved.length}`}>
               <Icon name="heart" />{saved.length > 0 && <span className="count-badge">{saved.length}</span>}
             </Link>
-            <button className="icon-btn" type="button" aria-label={`Open basket, ${totals.count} items`} onClick={openCart}>
-              <Icon name="cart" /><span className="count-badge">{totals.count}</span>
+            <button className="icon-btn" type="button" aria-label={basketLabel} onClick={openCart}>
+              <Icon name="cart" />{totals.count > 0 && <span className="count-badge">{totals.count}</span>}
             </button>
           </div>
         </div>

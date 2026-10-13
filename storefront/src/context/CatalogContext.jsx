@@ -13,11 +13,12 @@ export function CatalogProvider({ children }) {
     const controller = new AbortController()
     fetchCatalog(controller.signal)
       .then((result) => {
+        const hasProducts = Array.isArray(result?.products) && result.products.length > 0
         setCatalog({
-          products: Array.isArray(result.products) && result.products.length ? result.products : starterProducts,
-          categories: Array.isArray(result.categories) && result.categories.length ? result.categories : starterCategories,
+          products: hasProducts ? result.products : starterProducts,
+          categories: Array.isArray(result?.categories) && result.categories.length ? result.categories : starterCategories,
         })
-        setStatus('live')
+        setStatus(hasProducts ? 'live' : 'sample')
       })
       .catch((error) => {
         if (error.name !== 'AbortError') setStatus('sample')
