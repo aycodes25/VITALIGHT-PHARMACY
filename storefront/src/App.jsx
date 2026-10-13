@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { CatalogProvider } from './context/CatalogContext.jsx'
 import { StoreProvider } from './context/StoreContext.jsx'
 import Layout from './components/Layout.jsx'
+import HomePage from './pages/HomePage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 
 function ScrollToTop() {
@@ -19,7 +20,7 @@ export default function App() {
           <ScrollToTop />
           <Layout>
             <Routes>
-              <Route path="/" element={<p className="container section">Home</p>} />
+              <Route path="/" element={<HomePage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Layout>
