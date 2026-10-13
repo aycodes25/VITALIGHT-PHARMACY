@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import ProductArt from '../../../shared/art/ProductArt.jsx'
-import { discountPercent, isInStock, sortProducts } from '../../../shared/catalogTools.js'
+import HeroVisual from '../components/HeroVisual.jsx'
+import { categorySlug, discountPercent, isInStock, sortProducts } from '../../../shared/catalogTools.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import CategoryChips from '../components/CategoryChips.jsx'
 import PrescriptionBand from '../components/PrescriptionBand.jsx'
@@ -15,7 +15,11 @@ const concerns = [
 ]
 
 export default function HomePage() {
-  const { products } = useCatalog()
+  const { products, categories, status } = useCatalog()
+  // The starter catalogue stands in while loading; its categories must not drive links that may 404.
+  const loading = status === 'loading'
+  const existingSlugs = new Set(categories.map((category) => categorySlug(category.name)))
+  const visibleConcerns = loading ? [] : concerns.filter((item) => existingSlugs.has(item.to.replace('/category/', '')))
   const available = products.filter(isInStock)
   const deals = sortProducts(available.filter((p) => discountPercent(p) > 0), 'discount').slice(0, 10)
   const bestsellers = sortProducts(available.filter((p) => p.featured), 'featured').slice(0, 10)
@@ -32,15 +36,12 @@ export default function HomePage() {
             <p className="hero-lede">Trusted medicines, wellness essentials and friendly pharmacist support, ordered online and delivered to you.</p>
             <div className="hero-actions">
               <Link className="btn btn-primary" to="/search">Shop all products <Icon name="arrow" size={16} /></Link>
-              <Link className="btn btn-outline" to="/category/vitamins-and-supplements">Vitamins</Link>
+              {!loading && existingSlugs.has('vitamins-and-supplements') && (
+                <Link className="btn btn-outline" to="/category/vitamins-and-supplements">Vitamins</Link>
+              )}
             </div>
           </div>
-          <div className="hero-art" aria-hidden="true">
-            <div className="hero-circle" />
-            <ProductArt className="hero-tile tile-1" type="vitamin" color="lavender" />
-            <ProductArt className="hero-tile tile-2" type="tube" color="peach" />
-            <ProductArt className="hero-tile tile-3" type="firstaid" color="blue" />
-          </div>
+          <HeroVisual />
         </div>
       </section>
 
@@ -55,16 +56,18 @@ export default function HomePage() {
       <PrescriptionBand />
       <ProductRail eyebrow="Customer favourites" title="Bestsellers" products={bestsellers} to="/search" />
 
-      <section className="container section">
-        <div className="section-head"><div><p className="eyebrow">Shop by concern</p><h2>What are you looking for?</h2></div></div>
-        <div className="concerns">
-          {concerns.map((item) => (
-            <Link key={item.title} className="concern" to={item.to}>
-              <strong>{item.title}</strong><span>{item.text}</span><Icon name="arrow" size={18} />
-            </Link>
-          ))}
-        </div>
-      </section>
+      {visibleConcerns.length > 0 && (
+        <section className="container section">
+          <div className="section-head"><div><p className="eyebrow">Shop by concern</p><h2>What are you looking for?</h2></div></div>
+          <div className="concerns">
+            {visibleConcerns.map((item) => (
+              <Link key={item.title} className="concern" to={item.to}>
+                <strong>{item.title}</strong><span>{item.text}</span><Icon name="arrow" size={18} />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <ProductRail eyebrow="Just in" title="New arrivals" products={arrivals} to="/search" />
     </>

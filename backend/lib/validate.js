@@ -4,8 +4,9 @@ const allowedArt = new Set(ART_KEYS)
 const allowedColors = new Set(COLOR_KEYS)
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const fail = (error) => ({ error })
+const MAX_PRODUCT_IMAGES = 8
 
-export function validateProductInput(body = {}, { supabaseUrl = '', requireId = false } = {}) {
+export function validateProductInput(body = {}, { supabaseUrl = '', requireId = false, productId } = {}) {
   const { id, name, category, detail, price, old_price, tag, art, color, image_url, stock, is_active, featured } = body
 
   if (requireId && (typeof id !== 'string' || !ID_PATTERN.test(id) || id.length > 60)) {
@@ -37,6 +38,19 @@ export function validateProductInput(body = {}, { supabaseUrl = '', requireId = 
     return fail('Product images must be uploaded to the pharmacy image library.')
   }
 
+  let gallery
+  if (body.images !== undefined) {
+    if (!Array.isArray(body.images)) return fail('Product photos must be a list of uploaded images.')
+    if (body.images.length > MAX_PRODUCT_IMAGES) return fail('You can attach up to 8 product photos.')
+    // With a product id, every photo must live in that product's own folder.
+    const prefix = `${supabaseUrl}/storage/v1/object/public/product-images/${productId ? `${productId}/` : ''}`
+    if (body.images.some((url) => typeof url !== 'string' || !url.startsWith(prefix) || url.includes('..'))) {
+      return fail('Product photos must be uploaded to the pharmacy image library.')
+    }
+    if (new Set(body.images).size !== body.images.length) return fail('Each product photo can only be attached once.')
+    gallery = body.images
+  }
+
   const value = {
     name: name.trim(),
     category: category.trim(),
@@ -52,6 +66,10 @@ export function validateProductInput(body = {}, { supabaseUrl = '', requireId = 
     featured,
   }
   if (requireId) value.id = id
+  if (gallery) {
+    value.images = gallery
+    value.image_url = gallery[0] ?? null
+  }
 
   // Optional fields: only validated and included when sent, so older clients
   // editing a product never reset them to defaults.

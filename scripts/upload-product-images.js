@@ -31,7 +31,7 @@ try {
   else console.log('No files found in that folder.')
   console.log(dryRun
     ? `Dry run: ${summary.matched.length} photo(s) would be uploaded. Nothing was changed.`
-    : `Updated ${summary.updated.length} product photo(s).`)
+    : `Updated ${summary.updated.length} product photo(s).${summary.dropped ? ` ${summary.dropped} older photo${summary.dropped === 1 ? '' : 's'} dropped from gallery (8 photo limit).` : ''}`)
   if (summary.failed.length) process.exitCode = 1
 } catch (error) {
   console.error(`Upload failed: ${error.message}`)

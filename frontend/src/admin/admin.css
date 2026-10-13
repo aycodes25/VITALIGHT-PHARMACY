@@ -265,3 +265,12 @@
   .admin-spinner { animation-duration: 1.8s; }
   .admin-shell *, .admin-login-page *, .admin-modal-backdrop * { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+.photo-list { display: grid; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+.photo-list li { display: flex; align-items: center; gap: 8px; padding: 6px; border: 1px solid #e9edf1; border-radius: 4px; background: #fff; }
+.photo-list img { width: 40px; height: 40px; flex: none; border: 1px solid #e9edf1; border-radius: 4px; background: #f7f8fa; object-fit: cover; }
+.photo-label { flex: 1; min-width: 0; overflow: hidden; color: #26354a; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.photo-label em { color: #55775f; font-style: normal; }
+.photo-actions { display: flex; flex: none; gap: 6px; }
+.photo-actions button { padding: 4px 8px; border: 1px solid #d9e0e8; border-radius: 4px; background: #fff; color: #0b2a50; font-size: 9px; cursor: pointer; }
+.photo-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.photo-note { color: #8a5a00; font-size: 8px; }

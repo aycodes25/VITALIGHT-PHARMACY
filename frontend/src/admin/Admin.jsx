@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import logo from '../../../shared/assets/logo.png'
 import wordmark from '../../../shared/assets/vitalight logo.png'
+import { productImages } from '../../../shared/productImages.js'
+import { MAX_PHOTOS, moveToFirst, removeAt, validateNewFiles } from './imageList.js'
+import { saveProductWithPhotos } from './saveProductWithPhotos.js'
 import './admin.css'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -52,7 +55,13 @@ function Admin() {
   const [productDialog, setProductDialog] = useState(false)
   const [editingProductId, setEditingProductId] = useState(null)
   const [productForm, setProductForm] = useState(productDefaults)
-  const [imageFile, setImageFile] = useState(null)
+  const [existingPhotos, setExistingPhotos] = useState([])
+  const [newFiles, setNewFiles] = useState([])
+  const [uploadProgress, setUploadProgress] = useState('')
+  // Set once a product comes back without an images key: migration 003 is not applied.
+  const [galleryMissing, setGalleryMissing] = useState(false)
+  // Bumped whenever the product dialog opens or closes so late save results can be ignored.
+  const dialogSession = useRef(0)
   const [categoryDialog, setCategoryDialog] = useState(false)
   const [editingCategoryName, setEditingCategoryName] = useState(null)
   const [categoryForm, setCategoryForm] = useState(categoryDefaults)
@@ -98,6 +107,7 @@ function Admin() {
       ])
       setOverview(overviewResult)
       setProducts(productsResult.products)
+      if (productsResult.products.length) setGalleryMissing(productsResult.products.some((item) => !('images' in item)))
       setCategories(categoriesResult.categories)
       setOrders(ordersResult.orders)
     } catch (requestError) {
@@ -196,6 +206,7 @@ function Admin() {
   }
 
   function editProduct(product) {
+    dialogSession.current += 1
     setEditingProductId(product.id)
     setProductForm({
       ...product,
@@ -203,21 +214,37 @@ function Admin() {
       old_price: product.old_price ?? '',
       image_url: product.image_url || null,
     })
-    setImageFile(null)
+    setExistingPhotos(productImages(product))
+    setNewFiles([])
+    setUploadProgress('')
     setProductDialog(true)
     setError('')
   }
 
   function newProduct() {
+    dialogSession.current += 1
     setEditingProductId(null)
     setProductForm({ ...productDefaults, category: categories[0]?.name || '' })
-    setImageFile(null)
+    setExistingPhotos([])
+    setNewFiles([])
+    setUploadProgress('')
     setProductDialog(true)
     setError('')
   }
 
+  // The gallery is assumed available unless something proves migration 003 is missing.
+  const galleryAvailable = !galleryMissing
+
+  function closeProductDialog() {
+    if (busy) return
+    dialogSession.current += 1
+    setProductDialog(false)
+  }
+
   async function saveProduct(event) {
     event.preventDefault()
+    const session_ = dialogSession.current
+    const isStillCurrent = () => dialogSession.current === session_
     setBusy(true)
     setError('')
     try {
@@ -232,35 +259,56 @@ function Admin() {
         tag: productForm.tag.trim(),
         stock: Number(productForm.stock),
       }
-      const saved = await authRequest(
-        editingProductId ? `/api/admin/products/${encodeURIComponent(editingProductId)}` : '/api/admin/products',
-        { method: editingProductId ? 'PUT' : 'POST', body: JSON.stringify(payload) },
-      )
-      let updatedProduct = saved.product
-      setEditingProductId(updatedProduct.id)
-      setProductForm({
-        ...updatedProduct,
-        old_price: updatedProduct.old_price ?? '',
-        image_url: updatedProduct.image_url || null,
-      })
-      if (imageFile) {
-        const uploaded = await authRequest(`/api/admin/products/${encodeURIComponent(updatedProduct.id)}/image`, {
+      const productPath = (id) => `/api/admin/products/${encodeURIComponent(id)}`
+      const result = await saveProductWithPhotos({
+        payload,
+        editingProductId,
+        keptPhotos: existingPhotos,
+        newFiles,
+        galleryAvailable,
+        createProduct: (body) => authRequest('/api/admin/products', { method: 'POST', body: JSON.stringify(body) }),
+        updateProduct: (id, body) => authRequest(productPath(id), { method: 'PUT', body: JSON.stringify(body) }),
+        uploadImage: async (id, file) => (await authRequest(`${productPath(id)}/image`, {
           method: 'POST',
-          body: imageFile,
-          headers: { 'Content-Type': imageFile.type },
-        })
-        const updated = await authRequest(`/api/admin/products/${encodeURIComponent(updatedProduct.id)}`, {
-          method: 'PUT',
-          body: JSON.stringify({ ...updatedProduct, image_url: uploaded.imageUrl }),
-        })
-        updatedProduct = updated.product
+          body: file,
+          headers: { 'Content-Type': file.type },
+        })).imageUrl,
+        isStillCurrent,
+        onProgress: (text) => { if (isStillCurrent()) setUploadProgress(text) },
+      })
+      if (result.aborted) {
+        await loadDashboard()
+        return
       }
-      setProductDialog(false)
-      setMessage(imageFile ? 'Product saved with its new image.' : 'Product saved.')
+      if (result.legacy) setGalleryMissing(true)
+      setEditingProductId(result.productId)
+      setProductForm({
+        ...result.product,
+        old_price: result.product.old_price ?? '',
+        image_url: result.product.image_url || null,
+      })
+      setExistingPhotos(result.keptPhotos)
+      // Only failed files stay queued; the product id above makes the retry an edit, not a second create.
+      setNewFiles(result.failed.map((item) => item.file))
+      setUploadProgress('')
       await loadDashboard()
+      if (result.failed.length || result.error || result.rejected.length) {
+        const parts = []
+        if (result.failed.length) parts.push(`The product was saved, but ${result.failed.length} photo${result.failed.length === 1 ? '' : 's'} could not be uploaded: ${result.failed.map((item) => item.file.name).join(', ')}. Save again to retry.`)
+        if (result.error) parts.push(`The uploaded photos could not be attached yet: ${result.error}. Save again to retry.`)
+        if (result.rejected.length) parts.push(result.message)
+        setError(parts.join(' '))
+        return
+      }
+      if (isStillCurrent()) {
+        dialogSession.current += 1
+        setProductDialog(false)
+      }
+      setMessage(result.message)
     } catch (saveError) {
       setError(saveError.message)
     } finally {
+      setUploadProgress('')
       setBusy(false)
     }
   }
@@ -386,7 +434,7 @@ function Admin() {
         </header>
         <section className="admin-content">
           <div className="admin-heading"><div><span className="admin-overline">YOUR PHARMACY, AT A GLANCE</span><h1>{section === 'overview' ? 'Good to see you.' : navigation.find((item) => item.id === section)?.title}</h1><p>{section === 'overview' ? 'Here’s what’s happening at Vitalight today.' : section === 'products' ? 'Add products, update prices, keep track of stock, and choose what shoppers see.' : section === 'categories' ? 'Organise the way customers explore your pharmacy.' : 'Review customer requests and keep every order moving.'}</p></div>
-            {section === 'products' && <button className="admin-primary-button admin-heading-action" type="button" onClick={newProduct}>＋ Add product</button>}
+            {section === 'products' && <button className="admin-primary-button admin-heading-action" type="button" disabled={busy} onClick={newProduct}>＋ Add product</button>}
             {section === 'categories' && <button className="admin-primary-button admin-heading-action" type="button" onClick={() => { setEditingCategoryName(null); setCategoryForm({ ...categoryDefaults, sort_order: categories.length }); setCategoryDialog(true); setError('') }}>＋ Add category</button>}
           </div>
           {error && <div className="admin-alert admin-page-alert" role="alert"><span>!</span>{error}<button type="button" aria-label="Dismiss error" onClick={() => setError('')}>×</button></div>}
@@ -403,13 +451,17 @@ function Admin() {
         categories={categories}
         product={productForm}
         editing={Boolean(editingProductId)}
-        imageFile={imageFile}
+        existingPhotos={existingPhotos}
+        newFiles={newFiles}
+        uploadProgress={uploadProgress}
+        galleryAvailable={galleryAvailable}
         busy={busy}
         error={error}
         setError={setError}
         setProduct={setProductForm}
-        setImageFile={setImageFile}
-        onClose={() => setProductDialog(false)}
+        setExistingPhotos={setExistingPhotos}
+        setNewFiles={setNewFiles}
+        onClose={closeProductDialog}
         onSubmit={saveProduct}
       />}
       {categoryDialog && <CategoryDialog category={categoryForm} editing={Boolean(editingCategoryName)} busy={busy} error={error} setCategory={setCategoryForm} onClose={() => setCategoryDialog(false)} onSubmit={saveCategory} />}
@@ -441,7 +493,7 @@ function Products({ products, search, setSearch, editProduct, deleteProduct, bus
   return (
     <section className="admin-panel admin-data-panel">
       <div className="admin-panel-heading admin-list-heading"><div><h2>Your products <span className="admin-total">{products.length}</span></h2><p>Manage pricing, stock, and storefront visibility.</p></div><label className="admin-search">⌕<input aria-label="Search products" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products…" /></label></div>
-      {products.length ?       <div className="admin-table-wrap"><table className="admin-table product-admin-table"><thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Visibility</th><th>Actions</th></tr></thead><tbody>{products.map((product) => <tr key={product.id}><td><div className="admin-product-name">{product.image_url ? <img src={product.image_url} alt="" /> : <span className={`admin-product-placeholder ${product.color}`}>✳</span>}<span><strong>{product.name}</strong><small>{product.id}</small></span></div></td><td>{product.category}</td><td><strong>{money(product.price)}</strong>{product.old_price && <small className="admin-old-price">{money(product.old_price)}</small>}</td><td><span className={product.stock <= 5 ? 'stock-low' : ''}>{product.stock}</span>{product.stock <= 5 && <small className="stock-warning">Low stock</small>}</td><td><span className={`product-visibility ${product.is_active ? 'visible' : 'hidden'}`}><i />{product.is_active ? 'Active' : 'Hidden'}</span>{product.featured && <small className="featured-label">Featured</small>}</td><td><div className="row-actions"><button type="button" onClick={() => editProduct(product)}>Edit</button>{product.is_active && <button type="button" disabled={busy} onClick={() => deleteProduct(product)}>Archive</button>}</div></td></tr>)}</tbody></table></div> : <EmptyState title="No products match your search" text="Try another search, or add products to your catalogue." />}
+      {products.length ?       <div className="admin-table-wrap"><table className="admin-table product-admin-table"><thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Visibility</th><th>Actions</th></tr></thead><tbody>{products.map((product) => <tr key={product.id}><td><div className="admin-product-name">{product.image_url ? <img src={product.image_url} alt="" /> : <span className={`admin-product-placeholder ${product.color}`}>✳</span>}<span><strong>{product.name}</strong><small>{product.id}</small></span></div></td><td>{product.category}</td><td><strong>{money(product.price)}</strong>{product.old_price && <small className="admin-old-price">{money(product.old_price)}</small>}</td><td><span className={product.stock <= 5 ? 'stock-low' : ''}>{product.stock}</span>{product.stock <= 5 && <small className="stock-warning">Low stock</small>}</td><td><span className={`product-visibility ${product.is_active ? 'visible' : 'hidden'}`}><i />{product.is_active ? 'Active' : 'Hidden'}</span>{product.featured && <small className="featured-label">Featured</small>}</td><td><div className="row-actions"><button type="button" disabled={busy} onClick={() => editProduct(product)}>Edit</button>{product.is_active && <button type="button" disabled={busy} onClick={() => deleteProduct(product)}>Archive</button>}</div></td></tr>)}</tbody></table></div> : <EmptyState title="No products match your search" text="Try another search, or add products to your catalogue." />}
     </section>
   )
 }
@@ -459,8 +511,61 @@ function EmptyState({ title, text }) {
   return <div className="admin-empty-state"><span>✳</span><h3>{title}</h3><p>{text}</p></div>
 }
 
-function ProductDialog({ categories, product, editing, imageFile, busy, error, setError, setProduct, setImageFile, onClose, onSubmit }) {
-  return <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}><section className="admin-modal admin-product-modal" role="dialog" aria-modal="true" aria-labelledby="product-dialog-title"><header><div><span className="admin-overline">{editing ? 'UPDATE YOUR CATALOGUE' : 'MAKE IT EASY TO FIND'}</span><h2 id="product-dialog-title">{editing ? 'Edit product' : 'Add a product'}</h2></div><button type="button" aria-label="Close dialog" onClick={onClose}>×</button></header><form onSubmit={onSubmit}><div className="admin-form-grid"><label className="form-full">Product name<input required minLength="2" maxLength="120" value={product.name} onChange={(event) => setProduct({ ...product, name: event.target.value, ...(!editing ? { id: event.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') } : {}) })} placeholder="e.g. Daily Essentials Multivitamin" /></label>{!editing && <label className="form-full">Product ID <small>Created automatically from the product name.</small><input required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength="60" value={product.id} onChange={(event) => setProduct({ ...product, id: event.target.value })} /></label>}<label>Category<select required value={product.category} onChange={(event) => setProduct({ ...product, category: event.target.value })}><option value="" disabled>Select a category</option>{categories.map((category) => <option key={category.name} value={category.name}>{category.name}</option>)}</select></label><label>Price (₦)<input required type="number" min="0" max="100000000" step="1" value={product.price} onChange={(event) => setProduct({ ...product, price: event.target.value })} placeholder="8500" /></label><label>Previous price (₦)<input type="number" min="0" max="100000000" step="1" value={product.old_price ?? ''} onChange={(event) => setProduct({ ...product, old_price: event.target.value })} placeholder="Optional" /></label><label>Stock quantity<input required type="number" min="0" max="1000000" step="1" value={product.stock} onChange={(event) => setProduct({ ...product, stock: event.target.value })} /></label><label className="form-full">Short description<input maxLength="240" value={product.detail} onChange={(event) => setProduct({ ...product, detail: event.target.value })} placeholder="Size, pack details, or customer-friendly info" /></label><label>Product badge<input maxLength="30" value={product.tag} onChange={(event) => setProduct({ ...product, tag: event.target.value })} placeholder="BESTSELLER" /></label><label>Illustration<select value={product.art} onChange={(event) => setProduct({ ...product, art: event.target.value })}>{[['vitamin', 'Bottle'], ['vitaminc', 'Wide bottle'], ['cleanser', 'Cleanser'], ['firstaid', 'First aid kit'], ['omega', 'Supplement tub'], ['device', 'Health device'], ['medicine', 'Medicine']].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Image background<select value={product.color} onChange={(event) => setProduct({ ...product, color: event.target.value })}>{[['lavender', 'Lavender'], ['peach', 'Peach'], ['mint', 'Mint'], ['blue', 'Blue']].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="form-full image-upload-field">Product photo <small>Optional · JPEG, PNG, or WebP · up to 5 MB. Square images work best.</small><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0] || null; setError(''); if (file && file.size > 5 * 1024 * 1024) { setError('Images must be 5 MB or smaller.'); event.target.value = ''; return } setImageFile(file) }} />{imageFile ? <span className="selected-file">Selected: {imageFile.name}</span> : product.image_url && <img className="current-image-preview" src={product.image_url} alt="Current product image" />}</label><div className="form-toggles form-full"><label><input type="checkbox" checked={product.is_active} onChange={(event) => setProduct({ ...product, is_active: event.target.checked })} /><span>Visible on storefront</span></label><label><input type="checkbox" checked={product.featured} onChange={(event) => setProduct({ ...product, featured: event.target.checked })} /><span>Feature in the catalogue</span></label></div></div>{error && <p className="admin-alert modal-error" role="alert">{error}</p>}<footer><button className="admin-secondary-button" type="button" onClick={onClose}>Cancel</button><button className="admin-primary-button" type="submit" disabled={busy || categories.length === 0}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Add product'} <span>→</span></button></footer>{categories.length === 0 && <p className="modal-hint">Add a product category before creating products.</p>}</form></section></div>
+function NewPhotoPreview({ file }) {
+  // Created inside the effect so StrictMode's mount/unmount/mount cycle revokes only URLs it also created.
+  const [url, setUrl] = useState('')
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file)
+    setUrl(objectUrl)
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [file])
+  return url ? <img src={url} alt="" /> : <span className="photo-preview-pending" />
+}
+
+function PhotoPicker({ existingPhotos, newFiles, setExistingPhotos, setNewFiles, galleryAvailable, setError, disabled }) {
+  const total = existingPhotos.length + newFiles.length
+  function addFiles(event) {
+    const picked = Array.from(event.target.files || [])
+    event.target.value = ''
+    if (!picked.length) return
+    const result = validateNewFiles(total, picked)
+    setError(result.errors.join(' '))
+    if (result.accepted.length) setNewFiles([...newFiles, ...result.accepted])
+  }
+  return <div className="form-full image-upload-field photo-picker">
+    <label>Product photos <small>Optional · up to {MAX_PHOTOS} · JPEG, PNG, or WebP · up to 5 MB each. The first photo is the main photo.</small>
+      <input type="file" multiple accept="image/jpeg,image/png,image/webp" disabled={disabled || total >= MAX_PHOTOS} onChange={addFiles} />
+    </label>
+    {!galleryAvailable && <small className="photo-note">Multiple photos need database migration 003; until then only the main photo is saved.</small>}
+    {total > 0 && <ul className="photo-list">
+      {existingPhotos.map((url, index) => <li key={url}>
+        <img src={url} alt={`Product photo ${index + 1}`} />
+        <span className="photo-label">{index === 0 ? 'Main photo' : `Photo ${index + 1}`}</span>
+        <span className="photo-actions">
+          {index > 0 && <button type="button" disabled={disabled} onClick={() => setExistingPhotos(moveToFirst(existingPhotos, index))}>Make main</button>}
+          <button type="button" disabled={disabled} onClick={() => setExistingPhotos(removeAt(existingPhotos, index))}>Remove</button>
+        </span>
+      </li>)}
+      {newFiles.map((file, index) => <li key={`${file.name}-${file.size}-${index}`} className="photo-new">
+        <NewPhotoPreview file={file} />
+        <span className="photo-label">{existingPhotos.length + index === 0 ? 'Main photo · ' : ''}{file.name} <em>(new)</em></span>
+        <span className="photo-actions">
+          <button type="button" disabled={disabled} onClick={() => setNewFiles(removeAt(newFiles, index))}>Remove</button>
+        </span>
+      </li>)}
+    </ul>}
+  </div>
+}
+
+function ProductDialog({ categories, product, editing, existingPhotos, newFiles, uploadProgress, galleryAvailable, busy, error, setError, setProduct, setExistingPhotos, setNewFiles, onClose, onSubmit }) {
+  // Escape closes the dialog, except while a save is uploading photos.
+  useEffect(() => {
+    if (busy) return undefined
+    const onKeyDown = (event) => { if (event.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [busy, onClose])
+  return <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose() }}><section className="admin-modal admin-product-modal" role="dialog" aria-modal="true" aria-labelledby="product-dialog-title"><header><div><span className="admin-overline">{editing ? 'UPDATE YOUR CATALOGUE' : 'MAKE IT EASY TO FIND'}</span><h2 id="product-dialog-title">{editing ? 'Edit product' : 'Add a product'}</h2></div><button type="button" aria-label="Close dialog" disabled={busy} onClick={onClose}>×</button></header><form onSubmit={onSubmit}><div className="admin-form-grid"><label className="form-full">Product name<input required minLength="2" maxLength="120" value={product.name} onChange={(event) => setProduct({ ...product, name: event.target.value, ...(!editing ? { id: event.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') } : {}) })} placeholder="e.g. Daily Essentials Multivitamin" /></label>{!editing && <label className="form-full">Product ID <small>Created automatically from the product name.</small><input required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength="60" value={product.id} onChange={(event) => setProduct({ ...product, id: event.target.value })} /></label>}<label>Category<select required value={product.category} onChange={(event) => setProduct({ ...product, category: event.target.value })}><option value="" disabled>Select a category</option>{categories.map((category) => <option key={category.name} value={category.name}>{category.name}</option>)}</select></label><label>Price (₦)<input required type="number" min="0" max="100000000" step="1" value={product.price} onChange={(event) => setProduct({ ...product, price: event.target.value })} placeholder="8500" /></label><label>Previous price (₦)<input type="number" min="0" max="100000000" step="1" value={product.old_price ?? ''} onChange={(event) => setProduct({ ...product, old_price: event.target.value })} placeholder="Optional" /></label><label>Stock quantity<input required type="number" min="0" max="1000000" step="1" value={product.stock} onChange={(event) => setProduct({ ...product, stock: event.target.value })} /></label><label className="form-full">Short description<input maxLength="240" value={product.detail} onChange={(event) => setProduct({ ...product, detail: event.target.value })} placeholder="Size, pack details, or customer-friendly info" /></label><label>Product badge<input maxLength="30" value={product.tag} onChange={(event) => setProduct({ ...product, tag: event.target.value })} placeholder="BESTSELLER" /></label><label>Illustration<select value={product.art} onChange={(event) => setProduct({ ...product, art: event.target.value })}>{[['vitamin', 'Bottle'], ['vitaminc', 'Wide bottle'], ['cleanser', 'Cleanser'], ['firstaid', 'First aid kit'], ['omega', 'Supplement tub'], ['device', 'Health device'], ['medicine', 'Medicine']].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Image background<select value={product.color} onChange={(event) => setProduct({ ...product, color: event.target.value })}>{[['lavender', 'Lavender'], ['peach', 'Peach'], ['mint', 'Mint'], ['blue', 'Blue']].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><PhotoPicker existingPhotos={existingPhotos} newFiles={newFiles} setExistingPhotos={setExistingPhotos} setNewFiles={setNewFiles} galleryAvailable={galleryAvailable} setError={setError} disabled={busy} /><div className="form-toggles form-full"><label><input type="checkbox" checked={product.is_active} onChange={(event) => setProduct({ ...product, is_active: event.target.checked })} /><span>Visible on storefront</span></label><label><input type="checkbox" checked={product.featured} onChange={(event) => setProduct({ ...product, featured: event.target.checked })} /><span>Feature in the catalogue</span></label></div></div>{uploadProgress && <p className="modal-hint" role="status">{uploadProgress}</p>}{error && <p className="admin-alert modal-error" role="alert">{error}</p>}<footer><button className="admin-secondary-button" type="button" disabled={busy} onClick={onClose}>Cancel</button><button className="admin-primary-button" type="submit" disabled={busy || categories.length === 0}>{busy ? (uploadProgress || 'Saving…') : editing ? 'Save changes' : 'Add product'} <span>→</span></button></footer>{categories.length === 0 && <p className="modal-hint">Add a product category before creating products.</p>}</form></section></div>
 }
 
 function CategoryDialog({ category, editing, busy, error, setCategory, onClose, onSubmit }) {

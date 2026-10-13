@@ -130,4 +130,37 @@ describe('ProductPage', () => {
     setup('/product/live-only')
     await waitFor(() => expect(screen.getByText(/couldn’t find that page/)).toBeTruthy())
   })
+
+  describe('photo gallery', () => {
+    const photos = ['https://x.test/1.png', 'https://x.test/2.png', 'https://x.test/3.png']
+    const mainImage = () => document.querySelector('.product-detail .detail-art img, .product-detail img.detail-art')
+    const thumbs = () => screen.queryAllByRole('button', { name: /Show photo \d+ of \d+/ })
+    it('shows thumbnails and switches the main photo on click', async () => {
+      mockLiveCatalog([liveProduct({ id: 'live-gal', name: 'Gallery', image_url: photos[0], images: photos })])
+      setup('/product/live-gal')
+      await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Gallery'))
+      expect(thumbs()).toHaveLength(3)
+      expect(mainImage().getAttribute('src')).toBe(photos[0])
+      expect(screen.getByRole('button', { name: 'Show photo 1 of 3' }).getAttribute('aria-pressed')).toBe('true')
+      fireEvent.click(screen.getByRole('button', { name: 'Show photo 3 of 3' }))
+      expect(mainImage().getAttribute('src')).toBe(photos[2])
+      expect(screen.getByRole('button', { name: 'Show photo 3 of 3' }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByRole('button', { name: 'Show photo 1 of 3' }).getAttribute('aria-pressed')).toBe('false')
+    })
+    it('shows no thumbnails for a single photo', async () => {
+      mockLiveCatalog([liveProduct({ id: 'live-one', name: 'One photo', image_url: photos[0], images: [photos[0]] })])
+      setup('/product/live-one')
+      await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('One photo'))
+      expect(mainImage().getAttribute('src')).toBe(photos[0])
+      expect(thumbs()).toHaveLength(0)
+    })
+    it('keeps the illustration when there are no photos', async () => {
+      mockLiveCatalog([liveProduct({ id: 'live-none', name: 'No photo' })])
+      setup('/product/live-none')
+      await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('No photo'))
+      expect(document.querySelector('.product-detail img')).toBeNull()
+      expect(document.querySelector('.product-detail svg')).toBeTruthy()
+      expect(thumbs()).toHaveLength(0)
+    })
+  })
 })

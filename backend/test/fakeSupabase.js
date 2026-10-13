@@ -4,9 +4,15 @@ export function fakeSupabase({ user = null, results = {} } = {}) {
   const calls = []
 
   function from(table) {
+    const callIndex = calls.filter((call) => call.table === table).length
     const state = { table, ops: [] }
     calls.push(state)
-    const result = () => results[table] ?? { data: [], error: null }
+    // A function entry gets the number of earlier queries on this table (0 for the first).
+    const result = () => {
+      const entry = results[table]
+      if (typeof entry === 'function') return entry(callIndex)
+      return entry ?? { data: [], error: null }
+    }
     const chain = new Proxy({}, {
       get(_target, prop) {
         if (prop === 'then') return (resolve, reject) => Promise.resolve(result()).then(resolve, reject)

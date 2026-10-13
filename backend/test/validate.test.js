@@ -38,6 +38,51 @@ describe('validateProductInput', () => {
     expect(validateProductInput({ ...base, sort_order: 1000 }).error).toMatch(/order/)
     expect(validateProductInput({ ...base, brand: 'x'.repeat(61) }).error).toMatch(/Brand/)
   })
+  describe('images gallery', () => {
+    const supabaseUrl = 'https://example.supabase.co'
+    const url = (name) => `${supabaseUrl}/storage/v1/object/public/product-images/p/${name}.png`
+    const run = (extra) => validateProductInput({ ...base, ...extra }, { supabaseUrl })
+    it('sets images and derives image_url from the first photo', () => {
+      const { value, error } = run({ images: [url('a'), url('b')], image_url: url('z') })
+      expect(error).toBeUndefined()
+      expect(value.images).toEqual([url('a'), url('b')])
+      expect(value.image_url).toBe(url('a'))
+    })
+    it('clears image_url for an empty list', () => {
+      const { value } = run({ images: [], image_url: url('z') })
+      expect(value.images).toEqual([])
+      expect(value.image_url).toBeNull()
+    })
+    it('leaves images out when it is absent', () => {
+      const { value } = run({ image_url: url('z') })
+      expect('images' in value).toBe(false)
+      expect(value.image_url).toBe(url('z'))
+    })
+    it('rejects more than 8, duplicates, non-arrays and foreign urls', () => {
+      const nine = Array.from({ length: 9 }, (_, i) => url(String(i)))
+      expect(run({ images: nine }).error).toMatch(/up to 8/)
+      expect(run({ images: [url('a'), url('a')] }).error).toMatch(/once/)
+      expect(run({ images: 'x' }).error).toMatch(/photos/)
+      expect(run({ images: [url('a'), 'https://evil.test/x.png'] }).error).toMatch(/image library/)
+      expect(run({ images: [42] }).error).toMatch(/image library/)
+    })
+  })
+  describe('gallery urls tied to the product', () => {
+    const supabaseUrl = 'https://example.supabase.co'
+    const base_ = `${supabaseUrl}/storage/v1/object/public/product-images`
+    const run = (images, productId = 'p') => validateProductInput({ ...base, images }, { supabaseUrl, productId })
+    it('accepts urls under the product folder', () => {
+      expect(run([`${base_}/p/a.png`]).error).toBeUndefined()
+    })
+    it('rejects another product folder, a prefix lookalike and path traversal', () => {
+      expect(run([`${base_}/other/a.png`]).error).toMatch(/image library/)
+      expect(run([`${base_}/p2/a.png`]).error).toMatch(/image library/)
+      expect(run([`${base_}/p/../other/a.png`]).error).toMatch(/image library/)
+    })
+    it('keeps the bucket-wide check when no productId is given', () => {
+      expect(validateProductInput({ ...base, images: [`${base_}/other/a.png`] }, { supabaseUrl }).error).toBeUndefined()
+    })
+  })
   it('only accepts images from the product-images bucket', () => {
     const supabaseUrl = 'https://example.supabase.co'
     const ok = `${supabaseUrl}/storage/v1/object/public/product-images/a/b.png`

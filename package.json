@@ -14,7 +14,8 @@
     "start": "node backend/index.js",
     "preview": "vite preview",
     "test": "vitest run",
-    "images": "node scripts/upload-product-images.js"
+    "images": "node scripts/upload-product-images.js",
+    "images:list": "node scripts/list-product-photos.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.76.1",

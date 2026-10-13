@@ -45,9 +45,10 @@ Honest note: the order is saved in the admin AND the customer sends the pre-fill
 Follow these steps in order when this version replaces one that is already live.
 
 1. **Before deploying**, apply `supabase/migrations/001_catalogue_v2.sql` in the Supabase SQL editor. It adds the `brand`, `rx_required` and `sort_order` columns and the 12 categories that this version reads. The previous version keeps working with these additions.
-2. **Deploy** this version.
-3. **Review and trim the catalogue** in `/admin`: check names, prices, stock and visibility of your real products.
-4. Apply `supabase/migrations/002_seed_catalogue.sql` **only if** you want the 113 sample products published. They are created with `is_active = true` and sample prices and stock, so they appear on the live storefront immediately. Delete or edit them in the admin before taking orders.
+2. Also apply `supabase/migrations/003_product_images.sql` (adds the `images` photo gallery column). Apply it together with 001, before deploying. If it is missing the storefront keeps working with each product's main photo, but saving several photos in the admin needs it.
+3. **Deploy** this version.
+4. **Review and trim the catalogue** in `/admin`: check names, prices, stock and visibility of your real products.
+5. Apply `supabase/migrations/002_seed_catalogue.sql` **only if** you want the 113 sample products published. They are created with `is_active = true` and sample prices and stock, so they appear on the live storefront immediately. Delete or edit them in the admin before taking orders.
 
 If you skip `002_seed_catalogue.sql` on an existing database, review the tags and descriptions of the 7 original products in the admin, as older versions used promotional wording there.
 
@@ -64,6 +65,25 @@ The storefront shows a product's `image_url` photo instead of the illustration w
 
 Photos replace the illustration automatically. You can also upload a photo for a single product from the admin product form. Do not include private or patient information in photos.
 
+## Multiple product photos
+
+Each product can have up to 8 photos. In the admin product form, choose several JPEG, PNG or WebP files at once (5 MB each). New photos are listed with a preview; use **Make main** to move a photo to the front and **Remove** to drop one. The first photo is the main photo: it is stored as `image_url` and shown on product cards, while the product page shows the full gallery with thumbnails. Photos upload one by one after the product is saved; if one fails, the product and the other photos are kept and the failed files are listed so you can save again to retry.
+
+Galleries need `supabase/migrations/003_product_images.sql` (the `products.images` column). Without it the app keeps working with a single main photo: the admin accepts one new photo per save and it replaces the main photo (extra files are rejected with a message), and the storefront shows each product's `image_url`. Apply 003 to unlock the full gallery.
+
+The `npm run images` CLI is safe to re-run: photos are stored under a name derived from the file contents (`<product-id>/<sha1>.<ext>`), so the same folder gives the same URLs and never adds duplicates. The new photo goes first and earlier photos follow (up to 8; the summary reports how many older photos were dropped). Without the column it only sets `image_url`.
+
 ## Troubleshooting
 
 - **Storefront shows the sample catalogue banner and `/api/catalog` returns 503.** The live Supabase database is missing `supabase/migrations/001_catalogue_v2.sql`. The API selects the new columns `brand`, `rx_required` and `sort_order`; until they exist the query fails, the API answers 503 and the storefront falls back to the bundled sample catalogue. Apply the migration (see the runbook above).
+
+## Making the site look real: your own photos
+
+**Hero photo (home page).** Save a landscape photo of your pharmacy (about 1200 x 900, JPEG) as `frontend/public/hero.jpg`, then run `npm run build`. The home page shows it instead of the illustrations. If the file is missing, the illustrations stay.
+
+**Product photos.**
+1. `npm run images:list` writes `photos-checklist.csv`: every active product, the exact filename its photo needs, and whether it already has one.
+2. Put the photos in a folder (for example `photos/`) named exactly as in the `filename` column.
+3. `npm run images -- ./photos --dry-run` shows what would be attached; run it again without `--dry-run` to upload.
+
+Good sources are photos you take yourself, or the product image packs that manufacturers and distributors usually give registered pharmacies for free. Do not copy photos from other websites or search results without permission, and make sure each photo shows the product (brand and strength) you actually sell.

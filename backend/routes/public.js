@@ -1,29 +1,56 @@
 import { Router } from 'express'
+import { isMissingColumn } from '../lib/dbErrors.js'
 
-const CATALOG_PRODUCT_COLUMNS = 'id, name, category, detail, price, old_price, tag, art, color, image_url, stock, is_active, featured, brand, rx_required, sort_order'
+const LEGACY_PRODUCT_COLUMNS = 'id, name, category, detail, price, old_price, tag, art, color, image_url, stock, is_active, featured'
+const NO_IMAGES_PRODUCT_COLUMNS = `${LEGACY_PRODUCT_COLUMNS}, brand, rx_required, sort_order`
+const CATALOG_PRODUCT_COLUMNS = `${NO_IMAGES_PRODUCT_COLUMNS}, images`
+const CAPABILITY_TTL_MS = 60 * 1000
 
-export function publicRoutes({ supabase, starter }) {
+// Fallback steps, richest first, used while newer migrations are missing.
+const LEVELS = [
+  { name: 'full', columns: CATALOG_PRODUCT_COLUMNS, sortOrder: true },
+  { name: 'noImages', columns: NO_IMAGES_PRODUCT_COLUMNS, sortOrder: true },
+  { name: 'legacy', columns: LEGACY_PRODUCT_COLUMNS, sortOrder: false },
+]
+
+export function publicRoutes({ supabase, starter, now = Date.now }) {
   const router = Router()
+  // Discovered capability, cached for a minute so a missing migration costs one probe, not 2-3 queries per request.
+  let capability = { level: 0, at: 0 }
 
   router.get('/catalog', async (_req, res) => {
     if (!supabase) return res.json({ products: starter.products, categories: starter.categories })
     try {
-      const [{ data: products, error: productsError }, { data: categories, error: categoriesError }] = await Promise.all([
-        supabase.from('products')
-          .select(CATALOG_PRODUCT_COLUMNS)
-          .eq('is_active', true)
-          .order('featured', { ascending: false })
-          .order('sort_order', { ascending: true })
-          .order('name', { ascending: true }),
-        supabase.from('categories')
-          .select('name, description, icon, sort_order')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true }),
-      ])
-      if (productsError) throw productsError
+      const loadProducts = ({ columns, sortOrder }) => {
+        let query = supabase.from('products').select(columns).eq('is_active', true).order('featured', { ascending: false })
+        if (sortOrder) query = query.order('sort_order', { ascending: true })
+        return query.order('name', { ascending: true })
+      }
+      const categoriesPromise = supabase.from('categories')
+        .select('name, description, icon, sort_order')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+      let level = now() - capability.at < CAPABILITY_TTL_MS ? capability.level : 0
+      let productsResult = await loadProducts(LEVELS[level])
+      while (productsResult.error && isMissingColumn(productsResult.error) && level < LEVELS.length - 1) {
+        level += 1
+        console.warn(`Catalogue columns are missing; apply the pending Supabase migrations. Serving the "${LEVELS[level].name}" column set.`)
+        productsResult = await loadProducts(LEVELS[level])
+      }
+      if (!productsResult.error) capability = { level, at: now() }
+      const { data: categories, error: categoriesError } = await categoriesPromise
+      if (productsResult.error) throw productsResult.error
       if (categoriesError) throw categoriesError
+      const products = productsResult.data
       return res.json({
-        products: products.map((product) => ({ ...product, oldPrice: product.old_price })),
+        products: products.map((product) => ({
+          brand: '',
+          rx_required: false,
+          sort_order: 0,
+          ...product,
+          images: Array.isArray(product.images) && product.images.length ? product.images : (product.image_url ? [product.image_url] : []),
+          oldPrice: product.old_price,
+        })),
         categories,
       })
     } catch (error) {

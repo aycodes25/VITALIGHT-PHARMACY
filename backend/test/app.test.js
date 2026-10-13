@@ -41,6 +41,91 @@ describe('health and catalog', () => {
     const res = await request(appWith(supabase)).get('/api/catalog')
     expect(res.body.products[0]).toMatchObject({ id: 'a', old_price: 150, oldPrice: 150 })
   })
+  it('includes images in the live catalogue select and defaults a missing gallery from image_url', async () => {
+    const supabase = fakeSupabase({ results: {
+      products: { data: [
+        { id: 'a', name: 'A', price: 100, old_price: null, image_url: 'https://x/a.png', images: ['https://x/a.png', 'https://x/b.png'] },
+        { id: 'b', name: 'B', price: 100, old_price: null, image_url: 'https://x/c.png' },
+        { id: 'c', name: 'C', price: 100, old_price: null, image_url: null, images: null },
+      ], error: null },
+      categories: { data: [{ name: 'C' }], error: null },
+    } })
+    const res = await request(appWith(supabase)).get('/api/catalog')
+    const select = supabase.calls.find((call) => call.table === 'products').ops.find(([op]) => op === 'select')[1][0]
+    expect(select).toMatch(/\bimages\b/)
+    expect(res.body.products.map((product) => product.images)).toEqual([['https://x/a.png', 'https://x/b.png'], ['https://x/c.png'], []])
+  })
+  const missing = (column) => ({ data: null, error: { code: '42703', message: `column products.${column} does not exist` } })
+  const selectsOf = (supabase) => supabase.calls.filter((call) => call.table === 'products').map((call) => call.ops.find(([op]) => op === 'select')[1][0])
+
+  it('keeps brand, rx_required and sort_order when only images is missing', async () => {
+    const supabase = fakeSupabase({ results: {
+      products: (index) => index === 0
+        ? missing('images')
+        : { data: [{ id: 'a', name: 'A', price: 100, old_price: null, image_url: 'https://x/a.png', brand: 'Pfizer', rx_required: true, sort_order: 4 }], error: null },
+      categories: { data: [{ name: 'C' }], error: null },
+    } })
+    const res = await request(appWith(supabase)).get('/api/catalog')
+    expect(res.status).toBe(200)
+    expect(res.body.products[0]).toMatchObject({ id: 'a', brand: 'Pfizer', rx_required: true, sort_order: 4, images: ['https://x/a.png'], oldPrice: null })
+    const selects = selectsOf(supabase)
+    expect(selects).toHaveLength(2)
+    expect(selects[1]).not.toMatch(/\bimages\b/)
+    expect(selects[1]).toMatch(/rx_required/)
+  })
+  it('falls back to defaults when migration 001 is missing too', async () => {
+    const supabase = fakeSupabase({ results: {
+      products: (index) => index === 0 ? missing('images')
+        : index === 1 ? { data: null, error: { code: 'PGRST204', message: "Could not find the 'rx_required' column of 'products' in the schema cache" } }
+          : { data: [{ id: 'a', name: 'A', price: 100, old_price: null, image_url: 'https://x/a.png' }], error: null },
+      categories: { data: [{ name: 'C' }], error: null },
+    } })
+    const res = await request(appWith(supabase)).get('/api/catalog')
+    expect(res.status).toBe(200)
+    expect(res.body.products[0]).toMatchObject({ id: 'a', brand: '', rx_required: false, sort_order: 0, images: ['https://x/a.png'] })
+    const selects = selectsOf(supabase)
+    expect(selects).toHaveLength(3)
+    expect(selects[2]).not.toMatch(/images|brand|rx_required|sort_order/)
+  })
+  it('caches the discovered column set so later requests do not retry', async () => {
+    const supabase = fakeSupabase({ results: {
+      products: (index) => index === 0 ? missing('images')
+        : { data: [{ id: 'a', name: 'A', price: 100, old_price: null, image_url: null, brand: 'B', rx_required: true, sort_order: 1 }], error: null },
+      categories: { data: [], error: null },
+    } })
+    const app = appWith(supabase)
+    await request(app).get('/api/catalog')
+    const second = await request(app).get('/api/catalog')
+    expect(second.status).toBe(200)
+    expect(second.body.products[0].rx_required).toBe(true)
+    const selects = selectsOf(supabase)
+    expect(selects).toHaveLength(3)
+    expect(selects[2]).not.toMatch(/\bimages\b/)
+    // a fresh app starts uncached and probes the full column set again
+    const fresh = fakeSupabase({ results: { products: { data: [], error: null }, categories: { data: [], error: null } } })
+    await request(appWith(fresh)).get('/api/catalog')
+    expect(selectsOf(fresh)[0]).toMatch(/\bimages\b/)
+  })
+  it('answers 503 when every step fails with missing columns, or the error is unrelated', async () => {
+    const failing = fakeSupabase({ results: {
+      products: { data: null, error: { code: '42703', message: 'column x does not exist' } },
+      categories: { data: [], error: null },
+    } })
+    expect((await request(appWith(failing)).get('/api/catalog')).status).toBe(503)
+    expect(failing.calls.filter((call) => call.table === 'products')).toHaveLength(3)
+    const other = fakeSupabase({ results: {
+      products: { data: null, error: { code: '08006', message: 'connection refused' } },
+      categories: { data: [], error: null },
+    } })
+    expect((await request(appWith(other)).get('/api/catalog')).status).toBe(503)
+    expect(other.calls.filter((call) => call.table === 'products')).toHaveLength(1)
+    const loose = fakeSupabase({ results: {
+      products: { data: null, error: { message: 'the column family is read-only' } },
+      categories: { data: [], error: null },
+    } })
+    expect((await request(appWith(loose)).get('/api/catalog')).status).toBe(503)
+    expect(loose.calls.filter((call) => call.table === 'products')).toHaveLength(1)
+  })
 })
 
 describe('POST /api/orders validation', () => {
@@ -106,6 +191,50 @@ describe('admin products', () => {
     const update = supabase.calls.flatMap((c) => c.ops).find(([name]) => name === 'update')
     expect('rx_required' in update[1][0]).toBe(false)
     expect('brand' in update[1][0]).toBe(false)
+  })
+  describe('without the images column (migration 003 missing)', () => {
+    const gallery = [`${supabaseUrl}/storage/v1/object/public/product-images/new-item/a.png`, `${supabaseUrl}/storage/v1/object/public/product-images/new-item/b.png`]
+    const noColumn = { data: null, error: { code: 'PGRST204', message: "Could not find the 'images' column of 'products' in the schema cache" } }
+    const writes = (supabase, name) => supabase.calls.flatMap((c) => c.ops).filter(([op]) => op === name).map(([, args]) => args[0])
+    it('POST retries once without images and keeps image_url', async () => {
+      const supabase = fakeSupabase({ user: adminUser, results: { products: (index) => index === 0 ? noColumn : { data: [{ id: 'new-item', image_url: gallery[0] }], error: null } } })
+      const res = await request(appWith(supabase)).post('/api/admin/products').set('Authorization', 'Bearer good-token').send({ ...body, images: gallery })
+      expect(res.status).toBe(201)
+      expect(res.body.product.id).toBe('new-item')
+      expect('images' in res.body.product).toBe(false)
+      const inserts = writes(supabase, 'insert')
+      expect(inserts).toHaveLength(2)
+      expect(inserts[0].images).toEqual(gallery)
+      expect('images' in inserts[1]).toBe(false)
+      expect(inserts[1].image_url).toBe(gallery[0])
+    })
+    it('PUT retries once without images and keeps image_url', async () => {
+      const missing = { data: null, error: { code: '42703', message: 'column "images" of relation "products" does not exist' } }
+      const supabase = fakeSupabase({ user: adminUser, results: { products: (index) => index === 0 ? missing : { data: [{ id: 'new-item', image_url: gallery[0] }], error: null } } })
+      const res = await request(appWith(supabase)).put('/api/admin/products/new-item').set('Authorization', 'Bearer good-token').send({ ...body, images: gallery })
+      expect(res.status).toBe(200)
+      const updates = writes(supabase, 'update')
+      expect(updates).toHaveLength(2)
+      expect('images' in updates[1]).toBe(false)
+      expect(updates[1].image_url).toBe(gallery[0])
+    })
+    it('does not retry forever or for unrelated errors', async () => {
+      const supabase = fakeSupabase({ user: adminUser, results: { products: noColumn } })
+      const res = await request(appWith(supabase)).post('/api/admin/products').set('Authorization', 'Bearer good-token').send({ ...body, images: gallery })
+      expect(res.status).toBe(500)
+      expect(writes(supabase, 'insert')).toHaveLength(2)
+      const other = fakeSupabase({ user: adminUser, results: { products: { data: null, error: { code: '42703', message: 'column products.brand does not exist' } } } })
+      const res2 = await request(appWith(other)).post('/api/admin/products').set('Authorization', 'Bearer good-token').send({ ...body, images: gallery })
+      expect(res2.status).toBe(500)
+      expect(writes(other, 'insert')).toHaveLength(1)
+    })
+    it('rejects gallery urls from another product folder', async () => {
+      const other = `${supabaseUrl}/storage/v1/object/public/product-images/someone-else/a.png`
+      const post = await request(appWith(fakeSupabase({ user: adminUser }))).post('/api/admin/products').set('Authorization', 'Bearer good-token').send({ ...body, images: [other] })
+      expect(post.status).toBe(400)
+      const put = await request(appWith(fakeSupabase({ user: adminUser }))).put('/api/admin/products/new-item').set('Authorization', 'Bearer good-token').send({ ...body, images: [other] })
+      expect(put.status).toBe(400)
+    })
   })
   it('rejects an unknown art key', async () => {
     const supabase = fakeSupabase({ user: adminUser })

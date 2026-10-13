@@ -75,6 +75,13 @@
 /* Product detail */
 .product-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 56px); padding-block: 24px 8px; align-items: start; }
 .detail-art { border: 1px solid var(--line); }
+.detail-gallery { display: grid; gap: 12px; min-width: 0; }
+.detail-thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.detail-thumb { width: 64px; height: 64px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; cursor: pointer; }
+.detail-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.detail-thumb:hover { border-color: var(--navy, #0b2a50); }
+.detail-thumb:focus-visible { outline: 2px solid var(--navy, #0b2a50); outline-offset: 2px; }
+.detail-thumb.is-active { outline: 2px solid #fd3f92; outline-offset: 1px; border-color: #fd3f92; }
 .detail-info { display: grid; gap: 14px; }
 .detail-info h1 { font-size: clamp(26px, 3.4vw, 40px); }
 .detail-text { color: var(--navy-soft); font-size: 17px; }
@@ -90,3 +97,7 @@
 .icon-btn.is-saved svg { fill: currentColor; }
 .detail-note { font-size: 13px; color: var(--navy-soft); }
 @media (max-width: 760px) { .product-detail { grid-template-columns: 1fr; } }
+
+/* Hero: real photo of the pharmacy (frontend/public/hero.jpg) */
+.hero-photo { border-radius: 24px; overflow: hidden; box-shadow: var(--shadow); aspect-ratio: 4 / 3; background: var(--surface); border: 4px solid var(--white); }
+.hero-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }

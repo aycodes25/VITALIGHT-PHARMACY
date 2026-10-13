@@ -6,3 +6,6 @@ dist/
 npm-debug.log*
 
 .superpowers/
+
+photos/
+photos-checklist.csv

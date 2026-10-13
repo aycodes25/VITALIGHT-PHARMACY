@@ -4,6 +4,7 @@ import ProductArt from '../../../shared/art/ProductArt.jsx'
 import { MAX_QUANTITY } from '../../../shared/cart.js'
 import { categorySlug, discountPercent, isInStock, relatedProducts } from '../../../shared/catalogTools.js'
 import { formatPrice } from '../../../shared/money.js'
+import { productImages } from '../../../shared/productImages.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useStore } from '../context/StoreContext.jsx'
 import ProductRail from '../components/ProductRail.jsx'
@@ -20,6 +21,7 @@ function ProductDetail({ id }) {
   const { products, productById, status } = useCatalog()
   const { add, toggleSaved, isSaved } = useStore()
   const [quantity, setQuantity] = useState(1)
+  const [photoIndex, setPhotoIndex] = useState(0)
   const product = productById(id)
   if (!product) return status === 'loading' ? <LoadingState /> : <NotFoundPage />
 
@@ -28,6 +30,8 @@ function ProductDetail({ id }) {
   const maxQuantity = Math.min(MAX_QUANTITY, Number(product.stock) || 1)
   const saved = isSaved(product.id)
   const related = relatedProducts(products, product)
+  const photos = productImages(product)
+  const activePhoto = photos[Math.min(photoIndex, photos.length - 1)] ?? null
 
   return (
     <>
@@ -35,7 +39,25 @@ function ProductDetail({ id }) {
         <Link to="/">Home</Link> / <Link to={`/category/${categorySlug(product.category)}`}>{product.category}</Link> / <span>{product.name}</span>
       </div>
       <section className="container product-detail">
-        <ProductArt className="detail-art" type={product.art} color={product.color} imageUrl={product.image_url} name={product.name} />
+        <div className="detail-gallery">
+          <ProductArt className="detail-art" type={product.art} color={product.color} imageUrl={activePhoto} name={product.name} />
+          {photos.length > 1 && (
+            <div className="detail-thumbs">
+              {photos.map((photo, index) => (
+                <button
+                  key={photo}
+                  type="button"
+                  className={`detail-thumb ${photo === activePhoto ? 'is-active' : ''}`}
+                  aria-label={`Show photo ${index + 1} of ${photos.length}`}
+                  aria-pressed={photo === activePhoto}
+                  onClick={() => setPhotoIndex(index)}
+                >
+                  <img src={photo} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="detail-info">
           {product.brand && <p className="card-brand">{product.brand}</p>}
           <h1>{product.name}</h1>

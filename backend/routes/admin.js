@@ -19,6 +19,15 @@ function validateCategoryInput(body = {}) {
   return { value: { name: name.trim(), description: description.trim(), icon, sort_order, is_active } }
 }
 
+// Migration 003 (products.images) may not be applied yet; saving must still work with the main photo.
+const isMissingImagesColumn = (error) => (error?.code === '42703' || error?.code === 'PGRST204')
+  && /\bimages\b/.test(error?.message ?? '')
+
+function withoutImages(value) {
+  const { images: _images, ...rest } = value
+  return rest
+}
+
 export function adminRoutes({ supabase, supabaseUrl, auth }) {
   const router = Router()
   // Applied per route (not router.use) so unknown /api/admin/* paths fall through
@@ -64,10 +73,14 @@ export function adminRoutes({ supabase, supabaseUrl, auth }) {
   })
 
   router.post('/products', guard, async (req, res) => {
-    const result = validateProductInput(req.body, { supabaseUrl, requireId: true })
+    const result = validateProductInput(req.body, { supabaseUrl, requireId: true, productId: req.body?.id })
     if (result.error) return res.status(400).json({ error: result.error })
     try {
-      const { data, error } = await supabase.from('products').insert(result.value).select('*').single()
+      const insert = (value) => supabase.from('products').insert(value).select('*').single()
+      let { data, error } = await insert(result.value)
+      if (error && 'images' in result.value && isMissingImagesColumn(error)) {
+        ;({ data, error } = await insert(withoutImages(result.value)))
+      }
       if (error) {
         if (error.code === '23505') return res.status(409).json({ error: 'That product ID is already in use.' })
         if (error.code === '23503') return res.status(400).json({ error: 'Create the selected category before adding this product.' })
@@ -81,14 +94,18 @@ export function adminRoutes({ supabase, supabaseUrl, auth }) {
   })
 
   router.put('/products/:id', guard, async (req, res) => {
-    const result = validateProductInput(req.body, { supabaseUrl })
+    const result = validateProductInput(req.body, { supabaseUrl, productId: req.params.id })
     if (result.error) return res.status(400).json({ error: result.error })
     try {
-      const { data, error } = await supabase.from('products')
-        .update(result.value)
+      const update = (value) => supabase.from('products')
+        .update(value)
         .eq('id', req.params.id)
         .select('*')
         .maybeSingle()
+      let { data, error } = await update(result.value)
+      if (error && 'images' in result.value && isMissingImagesColumn(error)) {
+        ;({ data, error } = await update(withoutImages(result.value)))
+      }
       if (error) {
         if (error.code === '23503') return res.status(400).json({ error: 'Create the selected category before moving this product.' })
         throw error
