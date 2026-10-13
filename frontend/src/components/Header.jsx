@@ -4,6 +4,7 @@ import logoMark from '../../../shared/assets/logo.png'
 import wordmark from '../../../shared/assets/vitalight logo.png'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useStore } from '../context/StoreContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { categorySlug, filterProducts } from '../../../shared/catalogTools.js'
 import { formatPrice } from '../../../shared/money.js'
 import Icon from './Icon.jsx'
@@ -11,6 +12,7 @@ import Icon from './Icon.jsx'
 export default function Header() {
   const { categories, products } = useCatalog()
   const { totals, saved, openCart } = useStore()
+  const { user } = useAuth()
   const basketLabel = `Open basket, ${totals.count} ${totals.count === 1 ? 'item' : 'items'}`
   const navigate = useNavigate()
   const location = useLocation()
@@ -73,6 +75,9 @@ export default function Header() {
             )}
           </form>
           <div className="header-actions">
+            <Link className="icon-btn" to={user ? '/account' : '/login'} aria-label={user ? 'My account' : 'Sign in'}>
+              <Icon name="user" />
+            </Link>
             <Link className="icon-btn" to="/saved" aria-label={`Saved items, ${saved.length}`}>
               <Icon name="heart" />{saved.length > 0 && <span className="count-badge">{saved.length}</span>}
             </Link>
@@ -85,7 +90,8 @@ export default function Header() {
           <div className="container category-nav-inner">
             {categories.map((category) => (
               <NavLink key={category.name} to={`/category/${categorySlug(category.name)}`} className={({ isActive }) => (isActive ? 'active' : '')}>
-                {category.name}
+                <span className="cat-circle" aria-hidden="true">{category.icon}</span>
+                <span className="cat-label">{category.name}</span>
               </NavLink>
             ))}
           </div>

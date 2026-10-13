@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { isMissingColumn } from '../lib/dbErrors.js'
+import { customerFromRequest } from '../lib/customer.js'
 
 const LEGACY_PRODUCT_COLUMNS = 'id, name, category, detail, price, old_price, tag, art, color, image_url, stock, is_active, featured'
 const NO_IMAGES_PRODUCT_COLUMNS = `${LEGACY_PRODUCT_COLUMNS}, brand, rx_required, sort_order`
@@ -116,9 +117,11 @@ export function publicRoutes({ supabase, starter, now = Date.now }) {
         const product = available.get(item.productId)
         return { productId: item.productId, name: product.name, price: product.price, quantity: item.quantity }
       })
+      const customer = await customerFromRequest(supabase, req)
       const { data, error } = await supabase
         .from('orders')
         .insert({
+          ...(customer ? { user_id: customer.id } : {}),
           customer_name: customerName,
           phone: customerPhone,
           delivery_address: deliveryAddress,

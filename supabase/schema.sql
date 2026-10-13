@@ -74,3 +74,5 @@ set public = excluded.public,
 -- supabase/migrations/002_seed_catalogue.sql in the Supabase SQL editor.
 -- Note: running 002 again resets category descriptions/order and the 7 original products'
 -- brand/detail/featured/sort_order/rx_required (never price, stock, images or visibility).
+
+-- Customer accounts: also run supabase/migrations/004_customer_accounts.sql (orders.user_id + customer_profiles).

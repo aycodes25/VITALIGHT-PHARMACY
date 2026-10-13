@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import HeroVisual from '../components/HeroVisual.jsx'
 import { categorySlug, discountPercent, isInStock, sortProducts } from '../../../shared/catalogTools.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
-import CategoryChips from '../components/CategoryChips.jsx'
 import PrescriptionBand from '../components/PrescriptionBand.jsx'
 import ProductRail from '../components/ProductRail.jsx'
 import Icon from '../components/Icon.jsx'
@@ -51,7 +50,6 @@ export default function HomePage() {
         <div><Icon name="truck" /><span><strong>Delivered to you</strong><small>Order from anywhere</small></span></div>
       </section>
 
-      <CategoryChips />
       <ProductRail eyebrow="Great value" title="Today’s deals" products={deals} to="/search?sale=1" />
       <PrescriptionBand />
       <ProductRail eyebrow="Customer favourites" title="Bestsellers" products={bestsellers} to="/search" />

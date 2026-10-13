@@ -1,0 +1,599 @@
+- generic [ref=e2]:
+  - generic [ref=e3]: Your health, our priority. Order online and our pharmacist confirms every request.
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "Vitalight Pharmacy home" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img "Vitalight Pharmacy" [ref=e7]
+      - search [ref=e8]:
+        - textbox "Search products" [ref=e13]:
+          - /placeholder: Search medicines, vitamins, skin care…
+      - generic [ref=e14]:
+        - link "Sign in" [ref=e15] [cursor=pointer]:
+          - /url: /login
+        - link "Saved items, 0" [ref=e19] [cursor=pointer]:
+          - /url: /saved
+        - button "Open basket, 0 items" [ref=e22] [cursor=pointer]
+    - navigation "Categories" [ref=e27]:
+      - generic [ref=e28]:
+        - link "Medicines & pain relief" [ref=e29] [cursor=pointer]:
+          - /url: /category/medicines-and-pain-relief
+          - generic [aria-hidden] [ref=e30]: ✚
+        - link "Cold, flu & allergy" [ref=e32] [cursor=pointer]:
+          - /url: /category/cold-flu-and-allergy
+          - generic [aria-hidden] [ref=e33]: ❄
+        - link "Digestive health" [ref=e35] [cursor=pointer]:
+          - /url: /category/digestive-health
+          - generic [aria-hidden] [ref=e36]: ◎
+        - link "Vitamins & supplements" [ref=e38] [cursor=pointer]:
+          - /url: /category/vitamins-and-supplements
+          - generic [aria-hidden] [ref=e39]: ✳
+        - link "Skin care & dermatology" [ref=e41] [cursor=pointer]:
+          - /url: /category/skin-care-and-dermatology
+          - generic [aria-hidden] [ref=e42]: ❋
+        - link "Hair, body & personal care" [ref=e44] [cursor=pointer]:
+          - /url: /category/hair-body-and-personal-care
+          - generic [aria-hidden] [ref=e45]: ✿
+        - link "Mother & baby" [ref=e47] [cursor=pointer]:
+          - /url: /category/mother-and-baby
+          - generic [aria-hidden] [ref=e48]: ♡
+        - link "Sexual wellness & family planning" [ref=e50] [cursor=pointer]:
+          - /url: /category/sexual-wellness-and-family-planning
+          - generic [aria-hidden] [ref=e51]: ♥
+        - link "Diabetes & heart care" [ref=e53] [cursor=pointer]:
+          - /url: /category/diabetes-and-heart-care
+          - generic [aria-hidden] [ref=e54]: ⚕
+        - link "First aid & wound care" [ref=e56] [cursor=pointer]:
+          - /url: /category/first-aid-and-wound-care
+          - generic [aria-hidden] [ref=e57]: ✜
+        - link "Health devices & diagnostics" [ref=e59] [cursor=pointer]:
+          - /url: /category/health-devices-and-diagnostics
+          - generic [aria-hidden] [ref=e60]: ⌁
+        - link "Fitness & nutrition" [ref=e62] [cursor=pointer]:
+          - /url: /category/fitness-and-nutrition
+          - generic [aria-hidden] [ref=e63]: ❖
+  - main [ref=e65]:
+    - generic [ref=e68]:
+      - paragraph [ref=e69]: Your neighbourhood pharmacy
+      - heading "Care that feels lighter." [level=1] [ref=e70]
+      - paragraph [ref=e71]: Trusted medicines, wellness essentials and friendly pharmacist support, ordered online and delivered to you.
+      - link "Shop all products" [ref=e73] [cursor=pointer]:
+        - /url: /search
+    - region "Why Vitalight" [ref=e99]:
+      - generic [ref=e104]:
+        - strong [ref=e105]: Quality you can trust
+        - text: Carefully chosen products
+      - generic [ref=e110]:
+        - strong [ref=e111]: Pharmacist confirmed
+        - text: Every order is checked
+      - generic [ref=e117]:
+        - strong [ref=e118]: Delivered to you
+        - text: Order from anywhere
+    - generic [ref=e119]:
+      - generic [ref=e120]:
+        - generic [ref=e121]:
+          - paragraph [ref=e122]: Great value
+          - heading "Today’s deals" [level=2] [ref=e123]
+        - link "See all" [ref=e124] [cursor=pointer]:
+          - /url: /search?sale=1
+      - generic [ref=e127]:
+        - article [ref=e128]:
+          - generic [ref=e129]:
+            - link "Cold & Flu Tablets" [ref=e130] [cursor=pointer]:
+              - /url: /product/cold-flu-tablets
+              - img "Cold & Flu Tablets" [ref=e132]
+            - generic [ref=e143]: "-17%"
+            - button "Save Cold & Flu Tablets" [ref=e145] [cursor=pointer]
+          - generic [ref=e148]:
+            - generic [ref=e149]: Vitalight
+            - heading [level=3] [ref=e150]:
+              - link "Cold & Flu Tablets" [ref=e151] [cursor=pointer]:
+                - /url: /product/cold-flu-tablets
+            - paragraph [ref=e152]: 12 tablets
+            - generic [ref=e153]:
+              - generic [ref=e154]:
+                - text: ₦2,000
+                - deletion [ref=e155]: ₦2,400
+              - button "Add Cold & Flu Tablets to basket" [ref=e156] [cursor=pointer]
+        - article [ref=e159]:
+          - generic [ref=e160]:
+            - link "Diclofenac Pain Gel" [ref=e161] [cursor=pointer]:
+              - /url: /product/diclofenac-gel
+              - img "Diclofenac Pain Gel" [ref=e163]
+            - generic [ref=e169]: "-16%"
+            - button "Save Diclofenac Pain Gel" [ref=e171] [cursor=pointer]
+          - generic [ref=e174]:
+            - generic [ref=e175]: Vitalight
+            - heading [level=3] [ref=e176]:
+              - link "Diclofenac Pain Gel" [ref=e177] [cursor=pointer]:
+                - /url: /product/diclofenac-gel
+            - paragraph [ref=e178]: 50 g tube
+            - generic [ref=e179]:
+              - generic [ref=e180]:
+                - text: ₦3,200
+                - deletion [ref=e181]: ₦3,800
+              - button "Add Diclofenac Pain Gel to basket" [ref=e182] [cursor=pointer]
+        - article [ref=e185]:
+          - generic [ref=e186]:
+            - link "Daily Essentials Multivitamin" [ref=e187] [cursor=pointer]:
+              - /url: /product/daily-vitamins
+              - img "Daily Essentials Multivitamin" [ref=e189]
+            - generic [ref=e195]: "-15%"
+            - button "Save Daily Essentials Multivitamin" [ref=e197] [cursor=pointer]
+          - generic [ref=e200]:
+            - generic [ref=e201]: NutriBloom
+            - heading [level=3] [ref=e202]:
+              - link "Daily Essentials Multivitamin" [ref=e203] [cursor=pointer]:
+                - /url: /product/daily-vitamins
+            - paragraph [ref=e204]: 30 tablets
+            - generic [ref=e205]:
+              - generic [ref=e206]:
+                - text: ₦8,500
+                - deletion [ref=e207]: ₦10,000
+              - button "Add Daily Essentials Multivitamin to basket" [ref=e208] [cursor=pointer]
+        - article [ref=e211]:
+          - generic [ref=e212]:
+            - link "Daily Probiotic Capsules" [ref=e213] [cursor=pointer]:
+              - /url: /product/daily-probiotic
+              - img "Daily Probiotic Capsules" [ref=e215]
+            - generic [ref=e221]: "-15%"
+            - button "Save Daily Probiotic Capsules" [ref=e223] [cursor=pointer]
+          - generic [ref=e226]:
+            - generic [ref=e227]: NutriBloom
+            - heading [level=3] [ref=e228]:
+              - link "Daily Probiotic Capsules" [ref=e229] [cursor=pointer]:
+                - /url: /product/daily-probiotic
+            - paragraph [ref=e230]: 30 capsules
+            - generic [ref=e231]:
+              - generic [ref=e232]:
+                - text: ₦9,800
+                - deletion [ref=e233]: ₦11,500
+              - button "Add Daily Probiotic Capsules to basket" [ref=e234] [cursor=pointer]
+        - article [ref=e237]:
+          - generic [ref=e238]:
+            - link "Hand Sanitiser Gel" [ref=e239] [cursor=pointer]:
+              - /url: /product/hand-sanitiser-gel
+              - img "Hand Sanitiser Gel" [ref=e241]
+            - generic [ref=e247]: "-15%"
+            - button "Save Hand Sanitiser Gel" [ref=e249] [cursor=pointer]
+          - generic [ref=e252]:
+            - generic [ref=e253]: Vitalight
+            - heading [level=3] [ref=e254]:
+              - link "Hand Sanitiser Gel" [ref=e255] [cursor=pointer]:
+                - /url: /product/hand-sanitiser-gel
+            - paragraph [ref=e256]: 250 ml · 70% alcohol
+            - generic [ref=e257]:
+              - generic [ref=e258]:
+                - text: ₦1,700
+                - deletion [ref=e259]: ₦2,000
+              - button "Add Hand Sanitiser Gel to basket" [ref=e260] [cursor=pointer]
+        - article [ref=e263]:
+          - generic [ref=e264]:
+            - link "Gentle Body Wash" [ref=e265] [cursor=pointer]:
+              - /url: /product/gentle-body-wash
+              - img "Gentle Body Wash" [ref=e267]
+            - generic [ref=e273]: "-14%"
+            - button "Save Gentle Body Wash" [ref=e275] [cursor=pointer]
+          - generic [ref=e278]:
+            - generic [ref=e279]: PureLeaf
+            - heading [level=3] [ref=e280]:
+              - link "Gentle Body Wash" [ref=e281] [cursor=pointer]:
+                - /url: /product/gentle-body-wash
+            - paragraph [ref=e282]: 500 ml
+            - generic [ref=e283]:
+              - generic [ref=e284]:
+                - text: ₦3,800
+                - deletion [ref=e285]: ₦4,400
+              - button "Add Gentle Body Wash to basket" [ref=e286] [cursor=pointer]
+        - article [ref=e289]:
+          - generic [ref=e290]:
+            - link "Gentle Hydrating Cleanser" [ref=e291] [cursor=pointer]:
+              - /url: /product/gentle-cleanser
+              - img "Gentle Hydrating Cleanser" [ref=e293]
+            - generic [ref=e299]: "-14%"
+            - button "Save Gentle Hydrating Cleanser" [ref=e301] [cursor=pointer]
+          - generic [ref=e304]:
+            - generic [ref=e305]: DermaCalm
+            - heading [level=3] [ref=e306]:
+              - link "Gentle Hydrating Cleanser" [ref=e307] [cursor=pointer]:
+                - /url: /product/gentle-cleanser
+            - paragraph [ref=e308]: 200 ml
+            - generic [ref=e309]:
+              - generic [ref=e310]:
+                - text: ₦12,400
+                - deletion [ref=e311]: ₦14,500
+              - button "Add Gentle Hydrating Cleanser to basket" [ref=e312] [cursor=pointer]
+        - article [ref=e315]:
+          - generic [ref=e316]:
+            - link "Magnesium Citrate" [ref=e317] [cursor=pointer]:
+              - /url: /product/magnesium-citrate
+              - img "Magnesium Citrate" [ref=e319]
+            - generic [ref=e325]: "-13%"
+            - button "Save Magnesium Citrate" [ref=e327] [cursor=pointer]
+          - generic [ref=e330]:
+            - generic [ref=e331]: NutriBloom
+            - heading [level=3] [ref=e332]:
+              - link "Magnesium Citrate" [ref=e333] [cursor=pointer]:
+                - /url: /product/magnesium-citrate
+            - paragraph [ref=e334]: 60 capsules
+            - generic [ref=e335]:
+              - generic [ref=e336]:
+                - text: ₦8,300
+                - deletion [ref=e337]: ₦9,500
+              - button "Add Magnesium Citrate to basket" [ref=e338] [cursor=pointer]
+        - article [ref=e341]:
+          - generic [ref=e342]:
+            - link "Shea Body Lotion" [ref=e343] [cursor=pointer]:
+              - /url: /product/shea-body-lotion
+              - img "Shea Body Lotion" [ref=e345]
+            - generic [ref=e351]: "-13%"
+            - button "Save Shea Body Lotion" [ref=e353] [cursor=pointer]
+          - generic [ref=e356]:
+            - generic [ref=e357]: DermaCalm
+            - heading [level=3] [ref=e358]:
+              - link "Shea Body Lotion" [ref=e359] [cursor=pointer]:
+                - /url: /product/shea-body-lotion
+            - paragraph [ref=e360]: 400 ml
+            - generic [ref=e361]:
+              - generic [ref=e362]:
+                - text: ₦5,200
+                - deletion [ref=e363]: ₦6,000
+              - button "Add Shea Body Lotion to basket" [ref=e364] [cursor=pointer]
+        - article [ref=e367]:
+          - generic [ref=e368]:
+            - link "Warming Pain Patches" [ref=e369] [cursor=pointer]:
+              - /url: /product/pain-relief-patches
+              - img "Warming Pain Patches" [ref=e371]
+            - generic [ref=e378]: "-13%"
+            - button "Save Warming Pain Patches" [ref=e380] [cursor=pointer]
+          - generic [ref=e383]:
+            - generic [ref=e384]: PureLeaf
+            - heading [level=3] [ref=e385]:
+              - link "Warming Pain Patches" [ref=e386] [cursor=pointer]:
+                - /url: /product/pain-relief-patches
+            - paragraph [ref=e387]: 5 patches
+            - generic [ref=e388]:
+              - generic [ref=e389]:
+                - text: ₦2,800
+                - deletion [ref=e390]: ₦3,200
+              - button "Add Warming Pain Patches to basket" [ref=e391] [cursor=pointer]
+    - generic [ref=e395]:
+      - generic [ref=e396]:
+        - paragraph [ref=e397]: Prescription medicines
+        - heading "Have a prescription?" [level=2] [ref=e398]
+        - paragraph [ref=e399]: Contact our pharmacist and we will confirm availability and prepare your order. Prescription items are always verified before dispatch.
+      - link "WhatsApp us" [ref=e401] [cursor=pointer]:
+        - /url: https://wa.me/2348105079027
+    - generic [ref=e402]:
+      - generic [ref=e403]:
+        - generic [ref=e404]:
+          - paragraph [ref=e405]: Customer favourites
+          - heading "Bestsellers" [level=2] [ref=e406]
+        - link "See all" [ref=e407] [cursor=pointer]:
+          - /url: /search
+      - generic [ref=e410]:
+        - article [ref=e411]:
+          - generic [ref=e412]:
+            - link "Baby Diapers Size M" [ref=e413] [cursor=pointer]:
+              - /url: /product/baby-diapers-m
+              - img "Baby Diapers Size M" [ref=e415]
+            - generic [ref=e422]: "-10%"
+            - button "Save Baby Diapers Size M" [ref=e424] [cursor=pointer]
+          - generic [ref=e427]:
+            - generic [ref=e428]: BabyBloom
+            - heading [level=3] [ref=e429]:
+              - link "Baby Diapers Size M" [ref=e430] [cursor=pointer]:
+                - /url: /product/baby-diapers-m
+            - paragraph [ref=e431]: 40 pieces
+            - generic [ref=e432]:
+              - generic [ref=e433]:
+                - text: ₦8,800
+                - deletion [ref=e434]: ₦9,800
+              - button "Add Baby Diapers Size M to basket" [ref=e435] [cursor=pointer]
+        - article [ref=e438]:
+          - generic [ref=e439]:
+            - link "Blood Glucose Monitor Kit" [ref=e440] [cursor=pointer]:
+              - /url: /product/glucometer-kit
+              - img "Blood Glucose Monitor Kit" [ref=e442]
+            - generic [ref=e448]: "-12%"
+            - button "Save Blood Glucose Monitor Kit" [ref=e450] [cursor=pointer]
+          - generic [ref=e453]:
+            - generic [ref=e454]: Vitalight
+            - heading [level=3] [ref=e455]:
+              - link "Blood Glucose Monitor Kit" [ref=e456] [cursor=pointer]:
+                - /url: /product/glucometer-kit
+            - paragraph [ref=e457]: Meter + 10 strips
+            - generic [ref=e458]:
+              - generic [ref=e459]:
+                - text: ₦18,500
+                - deletion [ref=e460]: ₦21,000
+              - button "Add Blood Glucose Monitor Kit to basket" [ref=e461] [cursor=pointer]
+        - article [ref=e464]:
+          - generic [ref=e465]:
+            - link "Cetirizine 10 mg Tablets" [ref=e466] [cursor=pointer]:
+              - /url: /product/cetirizine-10mg
+              - img "Cetirizine 10 mg Tablets" [ref=e468]
+            - button "Save Cetirizine 10 mg Tablets" [ref=e479] [cursor=pointer]
+          - generic [ref=e482]:
+            - generic [ref=e483]: Vitalight
+            - heading [level=3] [ref=e484]:
+              - link "Cetirizine 10 mg Tablets" [ref=e485] [cursor=pointer]:
+                - /url: /product/cetirizine-10mg
+            - paragraph [ref=e486]: 10 tablets
+            - generic [ref=e487]:
+              - generic [ref=e488]: ₦1,400
+              - button "Add Cetirizine 10 mg Tablets to basket" [ref=e489] [cursor=pointer]
+        - article [ref=e492]:
+          - generic [ref=e493]:
+            - link "Daily Essentials Multivitamin" [ref=e494] [cursor=pointer]:
+              - /url: /product/daily-vitamins
+              - img "Daily Essentials Multivitamin" [ref=e496]
+            - generic [ref=e502]: "-15%"
+            - button "Save Daily Essentials Multivitamin" [ref=e504] [cursor=pointer]
+          - generic [ref=e507]:
+            - generic [ref=e508]: NutriBloom
+            - heading [level=3] [ref=e509]:
+              - link "Daily Essentials Multivitamin" [ref=e510] [cursor=pointer]:
+                - /url: /product/daily-vitamins
+            - paragraph [ref=e511]: 30 tablets
+            - generic [ref=e512]:
+              - generic [ref=e513]:
+                - text: ₦8,500
+                - deletion [ref=e514]: ₦10,000
+              - button "Add Daily Essentials Multivitamin to basket" [ref=e515] [cursor=pointer]
+        - article [ref=e518]:
+          - generic [ref=e519]:
+            - link "Digital Thermometer" [ref=e520] [cursor=pointer]:
+              - /url: /product/digital-thermometer
+              - img "Digital Thermometer" [ref=e522]
+            - button "Save Digital Thermometer" [ref=e528] [cursor=pointer]
+          - generic [ref=e531]:
+            - generic [ref=e532]: Vitalight
+            - heading [level=3] [ref=e533]:
+              - link "Digital Thermometer" [ref=e534] [cursor=pointer]:
+                - /url: /product/digital-thermometer
+            - paragraph [ref=e535]: 1 thermometer
+            - generic [ref=e536]:
+              - generic [ref=e537]: ₦7,500
+              - button "Add Digital Thermometer to basket" [ref=e538] [cursor=pointer]
+        - article [ref=e541]:
+          - generic [ref=e542]:
+            - link "Everyday First Aid Kit" [ref=e543] [cursor=pointer]:
+              - /url: /product/first-aid-kit
+              - img "Everyday First Aid Kit" [ref=e545]
+            - generic [ref=e551]: JUST IN
+            - button "Save Everyday First Aid Kit" [ref=e553] [cursor=pointer]
+          - generic [ref=e556]:
+            - generic [ref=e557]: Vitalight
+            - heading [level=3] [ref=e558]:
+              - link "Everyday First Aid Kit" [ref=e559] [cursor=pointer]:
+                - /url: /product/first-aid-kit
+            - paragraph [ref=e560]: 12 essentials
+            - generic [ref=e561]:
+              - generic [ref=e562]: ₦9,800
+              - button "Add Everyday First Aid Kit to basket" [ref=e563] [cursor=pointer]
+        - article [ref=e566]:
+          - generic [ref=e567]:
+            - link "Gentle Hydrating Cleanser" [ref=e568] [cursor=pointer]:
+              - /url: /product/gentle-cleanser
+              - img "Gentle Hydrating Cleanser" [ref=e570]
+            - generic [ref=e576]: "-14%"
+            - button "Save Gentle Hydrating Cleanser" [ref=e578] [cursor=pointer]
+          - generic [ref=e581]:
+            - generic [ref=e582]: DermaCalm
+            - heading [level=3] [ref=e583]:
+              - link "Gentle Hydrating Cleanser" [ref=e584] [cursor=pointer]:
+                - /url: /product/gentle-cleanser
+            - paragraph [ref=e585]: 200 ml
+            - generic [ref=e586]:
+              - generic [ref=e587]:
+                - text: ₦12,400
+                - deletion [ref=e588]: ₦14,500
+              - button "Add Gentle Hydrating Cleanser to basket" [ref=e589] [cursor=pointer]
+        - article [ref=e592]:
+          - generic [ref=e593]:
+            - link "Paracetamol 500 mg Tablets" [ref=e594] [cursor=pointer]:
+              - /url: /product/paracetamol-500mg
+              - img "Paracetamol 500 mg Tablets" [ref=e596]
+            - generic [ref=e607]: POPULAR
+            - button "Save Paracetamol 500 mg Tablets" [ref=e609] [cursor=pointer]
+          - generic [ref=e612]:
+            - generic [ref=e613]: Vitalight
+            - heading [level=3] [ref=e614]:
+              - link "Paracetamol 500 mg Tablets" [ref=e615] [cursor=pointer]:
+                - /url: /product/paracetamol-500mg
+            - paragraph [ref=e616]: 24 tablets
+            - generic [ref=e617]:
+              - generic [ref=e618]: ₦1,200
+              - button "Add Paracetamol 500 mg Tablets to basket" [ref=e619] [cursor=pointer]
+        - article [ref=e622]:
+          - generic [ref=e623]:
+            - link "Whey Protein" [ref=e624] [cursor=pointer]:
+              - /url: /product/whey-protein-1kg
+              - img "Whey Protein" [ref=e626]
+            - generic [ref=e631]: "-10%"
+            - button "Save Whey Protein" [ref=e633] [cursor=pointer]
+          - generic [ref=e636]:
+            - generic [ref=e637]: NutriBloom
+            - heading [level=3] [ref=e638]:
+              - link "Whey Protein" [ref=e639] [cursor=pointer]:
+                - /url: /product/whey-protein-1kg
+            - paragraph [ref=e640]: 1 kg tub
+            - generic [ref=e641]:
+              - generic [ref=e642]:
+                - text: ₦38,000
+                - deletion [ref=e643]: ₦42,000
+              - button "Add Whey Protein to basket" [ref=e644] [cursor=pointer]
+        - article [ref=e647]:
+          - generic [ref=e648]:
+            - link "Vitamin C + Zinc" [ref=e649] [cursor=pointer]:
+              - /url: /product/vitamin-c
+              - img "Vitamin C + Zinc" [ref=e651]
+            - button "Save Vitamin C + Zinc" [ref=e657] [cursor=pointer]
+          - generic [ref=e660]:
+            - generic [ref=e661]: NutriBloom
+            - heading [level=3] [ref=e662]:
+              - link "Vitamin C + Zinc" [ref=e663] [cursor=pointer]:
+                - /url: /product/vitamin-c
+            - paragraph [ref=e664]: Effervescent · 20 tablets
+            - generic [ref=e665]:
+              - generic [ref=e666]: ₦6,200
+              - button "Add Vitamin C + Zinc to basket" [ref=e667] [cursor=pointer]
+    - generic [ref=e670]:
+      - generic [ref=e671]:
+        - generic [ref=e672]:
+          - paragraph [ref=e673]: Just in
+          - heading "New arrivals" [level=2] [ref=e674]
+        - link "See all" [ref=e675] [cursor=pointer]:
+          - /url: /search
+      - generic [ref=e678]:
+        - article [ref=e679]:
+          - generic [ref=e680]:
+            - link "Warming Pain Patches" [ref=e681] [cursor=pointer]:
+              - /url: /product/pain-relief-patches
+              - img "Warming Pain Patches" [ref=e683]
+            - generic [ref=e690]: "-13%"
+            - button "Save Warming Pain Patches" [ref=e692] [cursor=pointer]
+          - generic [ref=e695]:
+            - generic [ref=e696]: PureLeaf
+            - heading [level=3] [ref=e697]:
+              - link "Warming Pain Patches" [ref=e698] [cursor=pointer]:
+                - /url: /product/pain-relief-patches
+            - paragraph [ref=e699]: 5 patches
+            - generic [ref=e700]:
+              - generic [ref=e701]:
+                - text: ₦2,800
+                - deletion [ref=e702]: ₦3,200
+              - button "Add Warming Pain Patches to basket" [ref=e703] [cursor=pointer]
+        - article [ref=e706]:
+          - generic [ref=e707]:
+            - link "Daily Fibre Sachets" [ref=e708] [cursor=pointer]:
+              - /url: /product/fibre-sachets
+              - img "Daily Fibre Sachets" [ref=e710]
+            - generic [ref=e716]: NEW
+            - button "Save Daily Fibre Sachets" [ref=e718] [cursor=pointer]
+          - generic [ref=e721]:
+            - generic [ref=e722]: NutriBloom
+            - heading [level=3] [ref=e723]:
+              - link "Daily Fibre Sachets" [ref=e724] [cursor=pointer]:
+                - /url: /product/fibre-sachets
+            - paragraph [ref=e725]: 14 sachets
+            - generic [ref=e726]:
+              - generic [ref=e727]: ₦4,200
+              - button "Add Daily Fibre Sachets to basket" [ref=e728] [cursor=pointer]
+        - article [ref=e731]:
+          - generic [ref=e732]:
+            - link "Kids Chewable Multivitamin" [ref=e733] [cursor=pointer]:
+              - /url: /product/kids-chewable-multivitamin
+              - img "Kids Chewable Multivitamin" [ref=e735]
+            - generic [ref=e740]: NEW
+            - button "Save Kids Chewable Multivitamin" [ref=e742] [cursor=pointer]
+          - generic [ref=e745]:
+            - generic [ref=e746]: BabyBloom
+            - heading [level=3] [ref=e747]:
+              - link "Kids Chewable Multivitamin" [ref=e748] [cursor=pointer]:
+                - /url: /product/kids-chewable-multivitamin
+            - paragraph [ref=e749]: 60 chewables
+            - generic [ref=e750]:
+              - generic [ref=e751]: ₦6,400
+              - button "Add Kids Chewable Multivitamin to basket" [ref=e752] [cursor=pointer]
+        - article [ref=e755]:
+          - generic [ref=e756]:
+            - link "Sunscreen SPF 50" [ref=e757] [cursor=pointer]:
+              - /url: /product/sunscreen-spf50
+              - img "Sunscreen SPF 50" [ref=e759]
+            - generic [ref=e765]: NEW
+            - button "Save Sunscreen SPF 50" [ref=e767] [cursor=pointer]
+          - generic [ref=e770]:
+            - generic [ref=e771]: DermaCalm
+            - heading [level=3] [ref=e772]:
+              - link "Sunscreen SPF 50" [ref=e773] [cursor=pointer]:
+                - /url: /product/sunscreen-spf50
+            - paragraph [ref=e774]: 75 ml
+            - generic [ref=e775]:
+              - generic [ref=e776]: ₦9,500
+              - button "Add Sunscreen SPF 50 to basket" [ref=e777] [cursor=pointer]
+        - article [ref=e780]:
+          - generic [ref=e781]:
+            - link "Anti-colic Feeding Bottle" [ref=e782] [cursor=pointer]:
+              - /url: /product/anti-colic-feeding-bottle
+              - img "Anti-colic Feeding Bottle" [ref=e784]
+            - generic [ref=e790]: NEW
+            - button "Save Anti-colic Feeding Bottle" [ref=e792] [cursor=pointer]
+          - generic [ref=e795]:
+            - generic [ref=e796]: BabyBloom
+            - heading [level=3] [ref=e797]:
+              - link "Anti-colic Feeding Bottle" [ref=e798] [cursor=pointer]:
+                - /url: /product/anti-colic-feeding-bottle
+            - paragraph [ref=e799]: 260 ml
+            - generic [ref=e800]:
+              - generic [ref=e801]: ₦4,200
+              - button "Add Anti-colic Feeding Bottle to basket" [ref=e802] [cursor=pointer]
+        - article [ref=e805]:
+          - generic [ref=e806]:
+            - link "Everyday First Aid Kit" [ref=e807] [cursor=pointer]:
+              - /url: /product/first-aid-kit
+              - img "Everyday First Aid Kit" [ref=e809]
+            - generic [ref=e815]: JUST IN
+            - button "Save Everyday First Aid Kit" [ref=e817] [cursor=pointer]
+          - generic [ref=e820]:
+            - generic [ref=e821]: Vitalight
+            - heading [level=3] [ref=e822]:
+              - link "Everyday First Aid Kit" [ref=e823] [cursor=pointer]:
+                - /url: /product/first-aid-kit
+            - paragraph [ref=e824]: 12 essentials
+            - generic [ref=e825]:
+              - generic [ref=e826]: ₦9,800
+              - button "Add Everyday First Aid Kit to basket" [ref=e827] [cursor=pointer]
+        - article [ref=e830]:
+          - generic [ref=e831]:
+            - link "Protein Bars 12-pack" [ref=e832] [cursor=pointer]:
+              - /url: /product/protein-bars-12
+              - img "Protein Bars 12-pack" [ref=e834]
+            - generic [ref=e841]: NEW
+            - button "Save Protein Bars 12-pack" [ref=e843] [cursor=pointer]
+          - generic [ref=e846]:
+            - generic [ref=e847]: NutriBloom
+            - heading [level=3] [ref=e848]:
+              - link "Protein Bars 12-pack" [ref=e849] [cursor=pointer]:
+                - /url: /product/protein-bars-12
+            - paragraph [ref=e850]: 12 bars
+            - generic [ref=e851]:
+              - generic [ref=e852]: ₦12,500
+              - button "Add Protein Bars 12-pack to basket" [ref=e853] [cursor=pointer]
+  - contentinfo [ref=e856]:
+    - generic [ref=e857]:
+      - generic [ref=e858]:
+        - link [ref=e859] [cursor=pointer]:
+          - /url: /
+          - img "Vitalight Pharmacy" [ref=e860]
+        - paragraph [ref=e861]: Your health, our priority. A little more care in every day.
+      - generic [ref=e862]:
+        - heading "Shop" [level=3] [ref=e863]
+        - link "Medicines & pain relief" [ref=e864] [cursor=pointer]:
+          - /url: /category/medicines-and-pain-relief
+        - link "Cold, flu & allergy" [ref=e865] [cursor=pointer]:
+          - /url: /category/cold-flu-and-allergy
+        - link "Digestive health" [ref=e866] [cursor=pointer]:
+          - /url: /category/digestive-health
+        - link "Vitamins & supplements" [ref=e867] [cursor=pointer]:
+          - /url: /category/vitamins-and-supplements
+        - link "Skin care & dermatology" [ref=e868] [cursor=pointer]:
+          - /url: /category/skin-care-and-dermatology
+        - link "Hair, body & personal care" [ref=e869] [cursor=pointer]:
+          - /url: /category/hair-body-and-personal-care
+      - generic [ref=e870]:
+        - heading "Help" [level=3] [ref=e871]
+        - link "Browse all products" [ref=e872] [cursor=pointer]:
+          - /url: /search
+        - link "Saved items" [ref=e873] [cursor=pointer]:
+          - /url: /saved
+      - generic [ref=e874]:
+        - heading "Talk to us" [level=3] [ref=e875]
+        - link "Chat on WhatsApp" [ref=e876] [cursor=pointer]:
+          - /url: https://wa.me/2348105079027
+    - generic [ref=e877]:
+      - generic [ref=e878]: © 2026 Vitalight Pharmacy
+      - generic [ref=e879]: Always follow the advice of your healthcare professional.
+  - link "Chat with Vitalight customer care on WhatsApp" [ref=e880] [cursor=pointer]:
+    - /url: https://wa.me/2348105079027?text=Hello%20Vitalight%20Pharmacy%2C%20I%20need%20some%20help.

@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { MAX_QUANTITY, cartLines, cartReducer, cartTotals } from '../../../shared/cart.js'
 import { useCatalog } from './CatalogContext.jsx'
+import { useAuth } from './AuthContext.jsx'
+import { fetchProfile, saveProfile } from '../api.js'
 
 const StoreContext = createContext(null)
 const CART_KEY = 'vitalight.cart'
@@ -42,10 +44,48 @@ export function StoreProvider({ children }) {
   const [orderOpen, setOrderOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const timer = useRef(null)
+  const { user, session } = useAuth()
+  const userId = user?.id ?? null
+  const token = session?.access_token ?? ''
+  const tokenRef = useRef(token)
+  tokenRef.current = token
+  const [synced, setSynced] = useState(false)
+  const wasSignedIn = useRef(false)
 
   useEffect(() => save(CART_KEY, cart), [cart])
   useEffect(() => save(SAVED_KEY, savedIds), [savedIds])
   useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  // Signing in brings the account's saved basket and items in, merged with whatever the guest had.
+  useEffect(() => {
+    setSynced(false)
+    if (!userId) {
+      // Signing out on a shared device must not leave the last customer's basket behind.
+      if (wasSignedIn.current) { dispatch({ type: 'clear' }); setSaved([]) }
+      wasSignedIn.current = false
+      return undefined
+    }
+    wasSignedIn.current = true
+    let cancelled = false
+    fetchProfile(tokenRef.current).then((profile) => {
+      if (cancelled) return
+      const remote = profile.cart && typeof profile.cart === 'object' ? profile.cart : {}
+      dispatch({ type: 'merge', cart: remote })
+      const remoteSaved = Array.isArray(profile.saved) ? profile.saved : []
+      setSaved((current) => [...new Set([...remoteSaved, ...current])])
+      setSynced(true)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [userId])
+
+  // Keep the account copy current (debounced) once the first merge has happened.
+  useEffect(() => {
+    if (!userId || !synced) return undefined
+    const handle = window.setTimeout(() => {
+      saveProfile(tokenRef.current, { cart, saved: savedIds }).catch(() => {})
+    }, 800)
+    return () => window.clearTimeout(handle)
+  }, [userId, synced, cart, savedIds])
 
   // Once stock is known, bring persisted quantities down to it. Out-of-stock lines
   // stay in storage (the drawer flags them) and are only blocked from the order.

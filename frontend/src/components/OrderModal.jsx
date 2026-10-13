@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { submitOrder } from '../api.js'
+import { fetchProfile, saveProfile, submitOrder } from '../api.js'
 import { formatPrice } from '../../../shared/money.js'
 import { buildOrderMessage, whatsAppLink } from '../../../shared/whatsapp.js'
 import { contact } from '../config.js'
 import { useStore } from '../context/StoreContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import Icon from './Icon.jsx'
 
 const emptyForm = { name: '', phone: '', address: '' }
@@ -15,6 +16,23 @@ export default function OrderModal() {
   const [error, setError] = useState('')
   const [placed, setPlaced] = useState(null)
   const inFlight = useRef(false)
+  const { user, session } = useAuth()
+  const token = session?.access_token ?? ''
+
+  // Signed-in customers get their saved details prefilled (never overwriting what they typed).
+  useEffect(() => {
+    if (!orderOpen || !token) return undefined
+    let cancelled = false
+    fetchProfile(token).then((profile) => {
+      if (cancelled) return
+      setForm((current) => ({
+        name: current.name || profile.name || user?.user_metadata?.full_name || '',
+        phone: current.phone || profile.phone || '',
+        address: current.address || profile.address || '',
+      }))
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [orderOpen, token, user])
 
   function closeOrder() {
     setPlaced(null)
@@ -46,7 +64,8 @@ export default function OrderModal() {
       const result = await submitOrder({
         ...form,
         items: lines.map(({ product, quantity }) => ({ productId: product.id, quantity })),
-      })
+      }, token)
+      if (token) saveProfile(token, { name: form.name, phone: form.phone, address: form.address }).catch(() => {})
       setPlaced({ ...summary, orderId: result?.orderId || '' })
       clearCart()
       setForm(emptyForm)
@@ -89,7 +108,7 @@ export default function OrderModal() {
         </div>
         <p style={{ marginTop: 8 }}>Share your details and our team will confirm availability, delivery and pricing.</p>
         <form className="form" onSubmit={onSubmit}>
-          <label>Your name<input autoComplete="name" required minLength={2} maxLength={100} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="e.g. Ada Okafor" /></label>
+          <label>Your name<input autoComplete="name" required minLength={2} maxLength={100} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="e.g. Ayomide Tominiyi" /></label>
           <label>Phone number<input autoComplete="tel" required type="tel" pattern="[+0-9\(\)\- ]{7,25}" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="+234 800 000 0000" /></label>
           <label>Delivery address<textarea autoComplete="street-address" required minLength={5} maxLength={500} rows={3} value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="Where should we deliver?" /></label>
           <div className="row"><span>{totals.count} {totals.count === 1 ? 'item' : 'items'} · estimated total</span><strong className="price">{formatPrice(totals.total)}</strong></div>

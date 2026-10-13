@@ -20,6 +20,13 @@ export function cartReducer(state, action) {
     }
     case 'clear':
       return {}
+    case 'merge': {
+      const merged = { ...state }
+      for (const [id, quantity] of Object.entries(action.cart || {})) {
+        if (Number.isInteger(quantity) && quantity >= 1) merged[id] = Math.min(MAX_QUANTITY, Math.max(merged[id] || 0, quantity))
+      }
+      return merged
+    }
     default:
       return state
   }
