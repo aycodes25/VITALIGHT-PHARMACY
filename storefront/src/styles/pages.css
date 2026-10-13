@@ -48,3 +48,25 @@
   .chips { grid-template-columns: repeat(2, 1fr); }
   .concerns { grid-template-columns: 1fr; }
 }
+
+/* Category / search */
+.breadcrumb { padding-top: 20px; font-size: 14px; color: var(--navy-soft); }
+.breadcrumb a:hover { color: var(--pink-dark); }
+.page-title { font-size: clamp(26px, 3.4vw, 38px); }
+.browser { padding-top: 20px; }
+.browser-layout { display: grid; grid-template-columns: 240px 1fr; gap: 28px; align-items: start; }
+.filters { display: grid; gap: 18px; position: sticky; top: 150px; }
+.filters fieldset { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 0; display: grid; gap: 8px; }
+.filters legend { font: 800 13px var(--font-head); padding: 0 6px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.check input { accent-color: var(--pink); width: 16px; height: 16px; }
+.price-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.price-inputs input { width: 100%; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 10px; }
+.sort { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+.sort select { border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; background: var(--white); }
+.result-count { margin-bottom: 14px; color: var(--navy-soft); font-weight: 700; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 28px; }
+@media (max-width: 900px) {
+  .browser-layout { grid-template-columns: 1fr; }
+  .filters { position: static; grid-template-columns: 1fr; }
+}

@@ -5,6 +5,9 @@ import { StoreProvider } from './context/StoreContext.jsx'
 import Layout from './components/Layout.jsx'
 import HomePage from './pages/HomePage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
+import CategoryPage from './pages/CategoryPage.jsx'
+import SearchPage from './pages/SearchPage.jsx'
+import SavedPage from './pages/SavedPage.jsx'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -21,7 +24,10 @@ export default function App() {
           <Layout>
             <Routes>
               <Route path="/" element={<HomePage />} />
-              <Route path="*" element={<NotFoundPage />} />
+              <Route path="/category/:slug" element={<CategoryPage />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/saved" element={<SavedPage />} />
+              <Route path="*"element={<NotFoundPage />} />
             </Routes>
           </Layout>
         </StoreProvider>
