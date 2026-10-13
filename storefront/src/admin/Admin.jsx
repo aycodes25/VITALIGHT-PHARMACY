@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import logo from '../vitalight logo.png'
+import logo from '../../../shared/assets/logo.png'
 import './admin.css'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL

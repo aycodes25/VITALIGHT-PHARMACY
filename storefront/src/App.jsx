@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import logo from '../vitalight logo.png'
-import { categories as starterCategories, products as starterProducts } from './catalog.js'
+import logo from '../../shared/assets/logo.png'
+import { categories as starterCategories, products as starterProducts } from '../../shared/catalog.js'
 
 function Icon({ name, size = 20 }) {
   const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }

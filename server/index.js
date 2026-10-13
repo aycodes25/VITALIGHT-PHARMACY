@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
-import { categories as starterCategories, products as starterProducts } from '../src/catalog.js'
+import { categories as starterCategories, products as starterProducts } from '../shared/catalog.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 3001
@@ -22,7 +22,7 @@ const supabase = supabaseUrl && supabaseServiceRoleKey
   })
   : null
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const clientDistPath = path.resolve(__dirname, '..', 'dist')
+const clientDistPath = path.resolve(__dirname, '..', 'dist', 'storefront')
 const allowedArt = new Set(['vitamin', 'vitaminc', 'cleanser', 'firstaid', 'omega', 'device', 'medicine'])
 const allowedColors = new Set(['lavender', 'peach', 'mint', 'blue'])
 const allowedStatuses = new Set(['new', 'contacted', 'fulfilled', 'cancelled'])
