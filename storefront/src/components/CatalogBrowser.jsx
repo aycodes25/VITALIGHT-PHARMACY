@@ -74,7 +74,7 @@ export default function CatalogBrowser({ eyebrow, title, products, initialFilter
           )}
         </aside>
         <div>
-          <p className="result-count">{view.total} {view.total === 1 ? 'product' : 'products'}</p>
+          <p className="result-count" aria-live="polite">{view.total} {view.total === 1 ? 'product' : 'products'}</p>
           <ProductGrid products={view.items} emptyText="No products match these filters. Try clearing a filter or searching for something else." />
           <Pagination page={view.page} pages={view.pages} onChange={(next) => { setPage(next); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
         </div>

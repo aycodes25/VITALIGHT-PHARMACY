@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { CatalogProvider } from '../context/CatalogContext.jsx'
@@ -15,6 +15,11 @@ const products = Array.from({ length: 30 }, (_, i) => mk(i + 1, i === 0 ? { oldP
 beforeEach(() => {
   localStorage.clear()
   vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('offline'))
+  vi.stubGlobal('scrollTo', vi.fn())
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 function setup(props = {}) {
@@ -54,5 +59,25 @@ describe('CatalogBrowser', () => {
   it('shows an empty message when nothing matches', () => {
     setup({ products: [] })
     expect(screen.getByText(/No products match/)).toBeTruthy()
+  })
+  it('narrows results by min and max price', () => {
+    setup()
+    fireEvent.change(screen.getByLabelText('Minimum price'), { target: { value: '3000' } })
+    fireEvent.change(screen.getByLabelText('Maximum price'), { target: { value: '3500' } })
+    expect(screen.getByText('6 products')).toBeTruthy()
+    expect(screen.getAllByRole('article')).toHaveLength(6)
+  })
+  it('starts with On sale checked when initialFilters.onSaleOnly is set', () => {
+    setup({ initialFilters: { onSaleOnly: true } })
+    expect(screen.getByLabelText('On sale').checked).toBe(true)
+    expect(screen.getByText('1 product')).toBeTruthy()
+    expect(screen.getAllByRole('article')).toHaveLength(1)
+  })
+  it('returns to page 1 when a filter changes while on page 2', () => {
+    setup()
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(within(screen.getAllByRole('article')[0]).getByRole('heading').textContent).toBe('Product 13')
+    fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'price-desc' } })
+    expect(within(screen.getAllByRole('article')[0]).getByRole('heading').textContent).toBe('Product 30')
   })
 })

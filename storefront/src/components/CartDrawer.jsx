@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import ProductArt from '../../../shared/art/ProductArt.jsx'
 import { formatPrice } from '../../../shared/money.js'
@@ -6,6 +7,16 @@ import Icon from './Icon.jsx'
 
 export default function CartDrawer() {
   const { cartOpen, closeCart, lines, totals, setQty, openOrder } = useStore()
+
+  useEffect(() => {
+    if (!cartOpen) return undefined
+    function onKeyDown(event) {
+      if (event.key === 'Escape') closeCart()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [cartOpen, closeCart])
+
   if (!cartOpen) return null
 
   return (

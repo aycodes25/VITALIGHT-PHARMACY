@@ -29,7 +29,7 @@ export default function App() {
               <Route path="/search" element={<SearchPage />} />
               <Route path="/saved" element={<SavedPage />} />
               <Route path="/product/:id" element={<ProductPage />} />
-              <Route path="*"element={<NotFoundPage />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Layout>
         </StoreProvider>

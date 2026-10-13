@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { submitOrder } from '../api.js'
 import { formatPrice } from '../../../shared/money.js'
 import { useStore } from '../context/StoreContext.jsx'
@@ -11,10 +11,26 @@ export default function OrderModal() {
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const inFlight = useRef(false)
+
+  useEffect(() => {
+    if (!orderOpen) return undefined
+    function onKeyDown(event) {
+      if (event.key === 'Escape') closeOrder()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      setError('')
+    }
+  }, [orderOpen, closeOrder])
+
   if (!orderOpen) return null
 
   async function onSubmit(event) {
     event.preventDefault()
+    if (inFlight.current) return
+    inFlight.current = true
     setSubmitting(true)
     setError('')
     try {
@@ -29,6 +45,7 @@ export default function OrderModal() {
     } catch (submitError) {
       setError(submitError.message || 'We could not submit your request. Please try again.')
     } finally {
+      inFlight.current = false
       setSubmitting(false)
     }
   }
