@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { MemoryRouter, Routes, Route, useLocation, useParams } from 'react-router-dom'
 import { CatalogProvider } from '../context/CatalogContext.jsx'
 import { StoreProvider } from '../context/StoreContext.jsx'
 import Header from './Header.jsx'
@@ -10,6 +10,11 @@ import Header from './Header.jsx'
 function SearchPage() {
   const location = useLocation()
   return <p data-testid="search-page">{location.search}</p>
+}
+
+function ProductPage() {
+  const { id } = useParams()
+  return <p data-testid="product-page">product {id}</p>
 }
 
 function setup() {
@@ -20,6 +25,7 @@ function setup() {
           <Header />
           <Routes>
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/product/:id" element={<ProductPage />} />
             <Route path="*" element={<p>elsewhere</p>} />
           </Routes>
         </StoreProvider>
@@ -79,6 +85,28 @@ describe('Header search', () => {
     setup()
     await user.type(screen.getByLabelText('Search products'), 'cough syrup{Enter}')
     expect(screen.getByTestId('search-page').textContent).toBe('?q=cough%20syrup')
+  })
+})
+
+describe('Header suggestions on press', () => {
+  it('prevents mousedown default on the suggestion list so focus stays on the input', async () => {
+    const user = userEvent.setup()
+    setup()
+    await user.type(screen.getByLabelText('Search products'), 'para')
+    const list = suggestionList()
+    expect(list).toBeTruthy()
+    const notPrevented = fireEvent.mouseDown(list)
+    expect(notPrevented).toBe(false)
+  })
+
+  it('navigates to the product page when a suggestion is clicked', async () => {
+    const user = userEvent.setup()
+    setup()
+    await user.type(screen.getByLabelText('Search products'), 'para')
+    const link = suggestionList().querySelector('a')
+    const id = link.getAttribute('href').replace('/product/', '')
+    await user.click(link)
+    expect(screen.getByTestId('product-page').textContent).toBe(`product ${id}`)
   })
 })
 

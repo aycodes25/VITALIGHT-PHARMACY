@@ -62,7 +62,7 @@ export default function Header() {
               onFocus={() => setFocused(true)}
             />
             {focused && suggestions.length > 0 && (
-              <ul className="suggestions">
+              <ul className="suggestions" onMouseDown={(event) => event.preventDefault()}>
                 {suggestions.map((product) => (
                   <li key={product.id}>
                     <Link to={`/product/${product.id}`}><span>{product.name}</span><strong>{formatPrice(product.price)}</strong></Link>
