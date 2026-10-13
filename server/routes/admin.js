@@ -1,14 +1,9 @@
 import express, { Router } from 'express'
 import { randomUUID } from 'node:crypto'
 import { validateProductInput } from '../lib/validate.js'
+import { IMAGE_TYPES, MAX_IMAGE_BYTES } from '../lib/images.js'
 
 const allowedStatuses = new Set(['new', 'contacted', 'fulfilled', 'cancelled'])
-
-const imageTypes = {
-  'image/jpeg': { extension: 'jpg', signature: (bytes) => bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff },
-  'image/png': { extension: 'png', signature: (bytes) => bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) },
-  'image/webp': { extension: 'webp', signature: (bytes) => bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP' },
-}
 
 function validateCategoryInput(body = {}) {
   const { name, description, icon, sort_order, is_active } = body
@@ -122,9 +117,9 @@ export function adminRoutes({ supabase, supabaseUrl, auth }) {
     }
   })
 
-  router.post('/products/:id/image', guard, express.raw({ type: Object.keys(imageTypes), limit: '5mb' }), async (req, res) => {
+  router.post('/products/:id/image', guard, express.raw({ type: Object.keys(IMAGE_TYPES), limit: MAX_IMAGE_BYTES }), async (req, res) => {
     const contentType = req.get('content-type') || ''
-    const imageType = imageTypes[contentType]
+    const imageType = IMAGE_TYPES[contentType]
     if (!Buffer.isBuffer(req.body) || req.body.length === 0 || !imageType || !imageType.signature(req.body)) {
       return res.status(400).json({ error: 'Choose a valid JPEG, PNG, or WebP image (maximum 5 MB).' })
     }
