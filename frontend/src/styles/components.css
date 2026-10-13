@@ -131,6 +131,6 @@
   .footer-grid { grid-template-columns: 1fr; }
 }
 
-.whatsapp-fab { position: fixed; right: 16px; bottom: 20px; z-index: 50; width: 56px; height: 56px; border-radius: 50%; background: var(--navy); color: var(--white); display: grid; place-items: center; box-shadow: var(--shadow); transition: box-shadow .15s ease, transform .15s ease; }
-.whatsapp-fab:hover, .whatsapp-fab:focus-visible { box-shadow: 0 0 0 3px var(--pink), var(--shadow); transform: translateY(-1px); }
+.whatsapp-fab { position: fixed; right: 20px; bottom: 96px; z-index: 50; width: 58px; height: 58px; border-radius: 50%; background: var(--pink); color: var(--navy-deep); border: 3px solid var(--white); display: grid; place-items: center; box-shadow: 0 6px 20px rgba(11, 42, 80, .35); transition: transform .15s, box-shadow .15s; }
+.whatsapp-fab:hover, .whatsapp-fab:focus-visible { box-shadow: 0 0 0 3px var(--navy), 0 8px 24px rgba(11, 42, 80, .4); transform: translateY(-2px); }
 .order-success .btn { margin-top: 12px; }
