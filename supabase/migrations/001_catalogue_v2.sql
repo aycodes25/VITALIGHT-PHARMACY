@@ -16,10 +16,23 @@ alter table public.products
   ));
 
 -- Rename legacy categories. Products follow automatically (ON UPDATE CASCADE).
-update public.categories set name = 'Medicines & pain relief' where name = 'Medicines';
-update public.categories set name = 'Skin care & dermatology' where name = 'Personal care';
-update public.categories set name = 'First aid & wound care' where name = 'First aid';
-update public.categories set name = 'Health devices & diagnostics' where name = 'Health devices';
+update public.categories set name = 'Medicines & pain relief'
+where name = 'Medicines'
+  and not exists (select 1 from public.categories where name = 'Medicines & pain relief');
+update public.categories set name = 'Skin care & dermatology'
+where name = 'Personal care'
+  and not exists (select 1 from public.categories where name = 'Skin care & dermatology');
+update public.categories set name = 'First aid & wound care'
+where name = 'First aid'
+  and not exists (select 1 from public.categories where name = 'First aid & wound care');
+update public.categories set name = 'Health devices & diagnostics'
+where name = 'Health devices'
+  and not exists (select 1 from public.categories where name = 'Health devices & diagnostics');
+
+-- Remove leftover empty legacy category rows (e.g. after a partial earlier run).
+delete from public.categories c
+where c.name in ('Medicines', 'Personal care', 'First aid', 'Health devices')
+  and not exists (select 1 from public.products p where p.category = c.name);
 
 create index if not exists products_category_idx on public.products (category);
 create index if not exists products_active_idx on public.products (is_active);

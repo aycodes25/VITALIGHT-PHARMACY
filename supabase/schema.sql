@@ -72,3 +72,5 @@ set public = excluded.public,
 
 -- After running this file, run supabase/migrations/001_catalogue_v2.sql and then
 -- supabase/migrations/002_seed_catalogue.sql in the Supabase SQL editor.
+-- Note: running 002 again resets category descriptions/order and the 7 original products'
+-- brand/detail/featured/sort_order/rx_required (never price, stock, images or visibility).
