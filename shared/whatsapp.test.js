@@ -3,13 +3,13 @@ import { buildOrderMessage, normalizeWhatsAppNumber, whatsAppLink } from './what
 
 describe('normalizeWhatsAppNumber', () => {
   it('converts a local Nigerian number to international digits', () => {
-    expect(normalizeWhatsAppNumber('08105079027')).toBe('2348105079027')
+    expect(normalizeWhatsAppNumber('09033925476')).toBe('2349033925476')
   })
   it('strips spaces and plus signs', () => {
-    expect(normalizeWhatsAppNumber('+234 810 507 9027')).toBe('2348105079027')
+    expect(normalizeWhatsAppNumber('+234 903 392 5476')).toBe('2349033925476')
   })
   it('keeps an already international number', () => {
-    expect(normalizeWhatsAppNumber('2348105079027')).toBe('2348105079027')
+    expect(normalizeWhatsAppNumber('2349033925476')).toBe('2349033925476')
   })
   it('returns an empty string for empty or too-short input', () => {
     expect(normalizeWhatsAppNumber('')).toBe('')
@@ -21,14 +21,14 @@ describe('normalizeWhatsAppNumber', () => {
 
 describe('whatsAppLink', () => {
   it('builds a plain wa.me link', () => {
-    expect(whatsAppLink('2348105079027')).toBe('https://wa.me/2348105079027')
+    expect(whatsAppLink('2349033925476')).toBe('https://wa.me/2349033925476')
   })
   it('returns an empty string without a number', () => {
     expect(whatsAppLink('', 'hi')).toBe('')
   })
   it('encodes the text and round-trips', () => {
     const text = 'Order & more\nTotal: ₦2,400 x 2'
-    const link = whatsAppLink('2348105079027', text)
+    const link = whatsAppLink('2349033925476', text)
     const query = link.split('?text=')[1]
     expect(query).not.toMatch(/[ \n&₦]/)
     expect(decodeURIComponent(query)).toBe(text)

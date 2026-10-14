@@ -7,7 +7,7 @@ import { StoreProvider, useStore } from '../context/StoreContext.jsx'
 import CartDrawer from './CartDrawer.jsx'
 import OrderModal from './OrderModal.jsx'
 
-vi.mock('../config.js', () => ({ contact: { phone: '', whatsapp: '2348105079027', email: '' } }))
+vi.mock('../config.js', () => ({ contact: { phone: '', whatsapp: '2349033925476', email: '' } }))
 
 function Controls() {
   const { add, openCart, totals } = useStore()
@@ -187,7 +187,7 @@ describe('order success view', () => {
     expect(link.getAttribute('target')).toBe('_blank')
     expect(link.getAttribute('rel')).toBe('noopener noreferrer')
     const href = link.getAttribute('href')
-    expect(href.startsWith('https://wa.me/2348105079027?text=')).toBe(true)
+    expect(href.startsWith('https://wa.me/2349033925476?text=')).toBe(true)
     const text = decodeURIComponent(href.split('?text=')[1])
     expect(text).toContain('Ada Okafor')
     expect(text).toContain('- 2 x Paracetamol 500 mg Tablets (₦2,400)')

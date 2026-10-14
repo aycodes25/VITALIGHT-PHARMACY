@@ -3,6 +3,9 @@ import { supabaseClient } from '../lib/supabaseClient.js'
 
 const AuthContext = createContext(null)
 
+// Email links must point at the public site, never a developer's localhost, so they open on phones.
+const siteUrl = (import.meta.env.VITE_SITE_URL || window.location.origin).replace(/\/+$/, '')
+
 const signedOut = {
   configured: false,
   loading: false,
@@ -58,7 +61,7 @@ export function AuthProvider({ children }) {
         const { data, error } = await auth.signUp({
           email,
           password,
-          options: { data: { full_name: name }, emailRedirectTo: `${window.location.origin}/account` },
+          options: { data: { full_name: name }, emailRedirectTo: `${siteUrl}/account` },
         })
         if (error) throw error
         return { needsConfirmation: !data.session }
@@ -67,7 +70,7 @@ export function AuthProvider({ children }) {
         await auth.signOut()
       },
       async sendPasswordReset(email) {
-        const { error } = await auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` })
+        const { error } = await auth.resetPasswordForEmail(email, { redirectTo: `${siteUrl}/reset-password` })
         if (error) throw error
       },
       async updatePassword(password) {

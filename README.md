@@ -33,7 +33,7 @@ Until Supabase and an admin account are configured, the storefront remains brows
 
 ## WhatsApp customer care and order forwarding
 
-The customer-care number is set with `VITE_PHARMACY_WHATSAPP` (default `2348105079027`, i.e. 08105079027; local `0...` numbers are converted to `234...`).
+The customer-care number is set with `VITE_PHARMACY_WHATSAPP` (default `2349033925476`, i.e. 09033925476; local `0...` numbers are converted to `234...`). Set `VITE_PHARMACY_PHONE` to show the same number as a call link.
 
 - A floating chat button on every page opens a WhatsApp chat with customer care (hidden if no number is set).
 - After a customer sends an order request, the success screen offers **Send order on WhatsApp**, which opens WhatsApp with the order details pre-filled.
