@@ -1,6 +1,6 @@
 import { formatPrice } from './money.js'
 
-// Returns digits-only international form (e.g. 2348105079027), or '' when invalid.
+// Returns digits-only international form (e.g. 2349033925476), or '' when invalid.
 export function normalizeWhatsAppNumber(input) {
   const digits = String(input ?? '').replace(/\D/g, '')
   if (digits.length < 10) return ''
