@@ -17,12 +17,12 @@ const wooRaw = (count, offset = 0) => Array.from({ length: count }, (_, i) => ({
 describe('scanStep: feeds', () => {
   it('reads a Shopify feed in one step', async () => {
     const opts = run({ 'https://shop.example/products.json?limit=250&page=1': { products: [
-      { title: 'A', handle: 'a', variants: [{ price: '100' }], images: [] },
-      { title: 'B', handle: 'b', variants: [{ price: '200' }], images: [] },
+      { title: 'Item A', handle: 'a', variants: [{ price: '100' }], images: [] },
+      { title: 'Item B', handle: 'b', variants: [{ price: '200' }], images: [] },
     ] } })
     const step = await scanStep({ url: 'https://shop.example/' }, opts)
     expect(step.platform).toBe('shopify')
-    expect(step.items.map((item) => item.name)).toEqual(['A', 'B'])
+    expect(step.items.map((item) => item.name)).toEqual(['Item A', 'Item B'])
     expect(step.cursor).toBeNull()
     expect(step.limitReached).toBe(false)
   })
@@ -62,19 +62,19 @@ describe('scanStep: html pages', () => {
   })
 
   it('reads a listing page that embeds several products', async () => {
-    const html = `${ld({ '@type': 'ItemList', itemListElement: [] })}${product('A')}${product('B')}`
+    const html = `${ld({ '@type': 'ItemList', itemListElement: [] })}${product('Item A')}${product('Item B')}`
     const step = await scanStep({ url: 'https://shop.example/shop' }, run({ 'https://shop.example/shop': html }))
-    expect(step.items.map((item) => item.name)).toEqual(['A', 'B'])
+    expect(step.items.map((item) => item.name)).toEqual(['Item A', 'Item B'])
     expect(step.cursor).toBeNull()
   })
 
   it('queues product links, fetches them in steps and follows the next listing page', async () => {
     const opts = run({
       'https://shop.example/shop': '<link rel="next" href="/shop?page=2"><a href="/products/a">a</a><a href="/products/b">b</a>',
-      'https://shop.example/products/a': product('A'),
-      'https://shop.example/products/b': product('B'),
+      'https://shop.example/products/a': product('Item A'),
+      'https://shop.example/products/b': product('Item B'),
       'https://shop.example/shop?page=2': '<a href="/products/c">c</a>',
-      'https://shop.example/products/c': product('C'),
+      'https://shop.example/products/c': product('Item C'),
     })
     const start = await scanStep({ url: 'https://shop.example/shop' }, opts)
     expect(start.items).toEqual([])
@@ -84,7 +84,7 @@ describe('scanStep: html pages', () => {
     })
 
     const products = await scanStep({ url: 'https://shop.example/shop', cursor: start.cursor }, opts)
-    expect(products.items.map((item) => item.name)).toEqual(['A', 'B'])
+    expect(products.items.map((item) => item.name)).toEqual(['Item A', 'Item B'])
     expect(products.cursor).toMatchObject({ queue: [], listingNext: 'https://shop.example/shop?page=2', total: 2 })
 
     const listing = await scanStep({ url: 'https://shop.example/shop', cursor: products.cursor }, opts)
@@ -92,21 +92,21 @@ describe('scanStep: html pages', () => {
     expect(listing.cursor).toMatchObject({ queue: ['https://shop.example/products/c'], listingNext: null, pages: 2 })
 
     const last = await scanStep({ url: 'https://shop.example/shop', cursor: listing.cursor }, opts)
-    expect(last.items.map((item) => item.name)).toEqual(['C'])
+    expect(last.items.map((item) => item.name)).toEqual(['Item C'])
     expect(last.cursor).toBeNull()
   })
 
   it('skips product pages that cannot be read', async () => {
-    const opts = run({ 'https://shop.example/products/a': product('A') })
+    const opts = run({ 'https://shop.example/products/a': product('Item A') })
     const cursor = { mode: 'html', queue: ['https://shop.example/products/a', 'https://shop.example/products/gone'], listingNext: null, pages: 1, total: 0 }
     const step = await scanStep({ url: 'https://shop.example/shop', cursor }, opts)
-    expect(step.items.map((item) => item.name)).toEqual(['A'])
+    expect(step.items.map((item) => item.name)).toEqual(['Item A'])
     expect(step.cursor).toBeNull()
   })
 
   it('stops at the product limit', async () => {
     const opts = run({
-      'https://shop.example/products/a': product('A'), 'https://shop.example/products/b': product('B'), 'https://shop.example/products/c': product('C'),
+      'https://shop.example/products/a': product('Item A'), 'https://shop.example/products/b': product('Item B'), 'https://shop.example/products/c': product('Item C'),
     })
     const cursor = {
       mode: 'html', total: LIMITS.maxProducts - 1, pages: 1, listingNext: null,
@@ -138,23 +138,73 @@ describe('scanStep: hostile sites and tampered cursors', () => {
     const step = await scanStep({ url: shop }, run({ [shop]: foreign + links }))
     expect(step.cursor.queue.length).toBeLessThanOrEqual(LIMITS.maxProducts)
     expect(step.cursor.queue.every((u) => u.startsWith('https://shop.example/'))).toBe(true)
+    expect(step.limitReached).toBe(true)
+  })
+
+  it('drops stored urls longer than 512 characters', async () => {
+    const long = `https://shop.example/products/${'x'.repeat(520)}`
+    const opts = run({ 'https://shop.example/products/a': product('Item A') })
+    const queue = [long, 'https://shop.example/products/a']
+    const step = await scanStep({ url: shop, cursor: { mode: 'html', queue, listingNext: null, pages: 1, total: 0 } }, opts)
+    expect(step.items.map((item) => item.name)).toEqual(['Item A'])
+    const links = `<a href="/products/${'y'.repeat(520)}">y</a><a href="/products/ok">ok</a>`
+    const start = await scanStep({ url: shop }, run({ [shop]: links }))
+    expect(start.cursor.queue).toEqual(['https://shop.example/products/ok'])
+  })
+
+  it('does not queue or fetch the same product url twice', async () => {
+    const { fetchImpl, calls } = fakeFetch({ 'https://shop.example/products/a': product('Item A') })
+    const opts = { fetchImpl, lookup: publicLookup }
+    const queue = ['https://shop.example/products/a', 'https://shop.example/products/a', 'https://shop.example/products/a/']
+    const step = await scanStep({ url: shop, cursor: { mode: 'html', queue, listingNext: null, pages: 1, total: 0 } }, opts)
+    expect(step.items).toHaveLength(1)
+    expect(calls.filter((c) => c.endsWith('/products/a') || c.endsWith('/products/a/'))).toHaveLength(1)
+
+    const html = '<a href="/products/a">a</a><a href="/products/a/">a</a><a href="/products/a#x">a</a><a href="/products/b">b</a>'
+    const start = await scanStep({ url: shop }, run({ [shop]: html }))
+    expect(start.cursor.queue).toEqual(['https://shop.example/products/a', 'https://shop.example/products/b'])
+  })
+
+  it('stops following listing pages once the page budget is used', async () => {
+    const { fetchImpl, calls } = fakeFetch({})
+    const cursor = { mode: 'html', queue: [], listingNext: 'https://shop.example/shop?page=21', pages: LIMITS.maxListingPages, total: 0 }
+    const step = await scanStep({ url: shop, cursor }, { fetchImpl, lookup: publicLookup })
+    expect(calls).toEqual([])
+    expect(step.cursor).toBeNull()
+    expect(step.limitReached).toBe(true)
+  })
+
+  it('follows a www / non-www redirect but refuses a redirect to another site', async () => {
+    const redirectTo = (from, to, routes = {}) => async (input) => {
+      const key = String(input)
+      if (key === from) return new Response(null, { status: 301, headers: { location: to } })
+      const hit = routes[key]
+      return hit === undefined ? new Response('nf', { status: 404 }) : new Response(hit, { status: 200, headers: { 'content-type': 'text/html' } })
+    }
+    const page = '<a href="/products/a">a</a>'
+    const same = { fetchImpl: redirectTo('https://shop.example/shop', 'https://www.shop.example/shop', { 'https://www.shop.example/shop': page }), lookup: publicLookup }
+    const ok = await scanStep({ url: shop }, same)
+    expect(ok.cursor.queue).toEqual(['https://www.shop.example/products/a'])
+
+    const other = { fetchImpl: redirectTo('https://shop.example/shop', 'https://other.example/shop', { 'https://other.example/shop': page }), lookup: publicLookup }
+    await expect(scanStep({ url: shop }, other)).rejects.toMatchObject({ status: 422, message: 'The website redirected to a different address. Paste the final address instead.' })
   })
 
   it('drops foreign or non-http listingNext values', async () => {
-    const opts = run({ 'https://shop.example/products/a': product('A') })
+    const opts = run({ 'https://shop.example/products/a': product('Item A') })
     for (const listingNext of ['https://evil.example/shop?page=2', 'javascript:alert(1)', 'file:///etc/passwd', 42, {}]) {
       const cursor = { mode: 'html', queue: ['https://shop.example/products/a'], listingNext, pages: 1, total: 0 }
       const step = await scanStep({ url: shop, cursor }, opts)
-      expect(step.items.map((item) => item.name)).toEqual(['A'])
+      expect(step.items.map((item) => item.name)).toEqual(['Item A'])
       expect(step.cursor).toBeNull()
     }
   })
 
   it('ignores foreign, non-string and non-http queue entries from a stored cursor', async () => {
-    const opts = run({ 'https://shop.example/products/a': product('A') })
+    const opts = run({ 'https://shop.example/products/a': product('Item A') })
     const queue = ['https://evil.example/products/x', 'ftp://shop.example/products/y', null, 7, {}, 'https://shop.example/products/a']
     const step = await scanStep({ url: shop, cursor: { mode: 'html', queue, listingNext: null, pages: 1, total: 0 } }, opts)
-    expect(step.items.map((item) => item.name)).toEqual(['A'])
+    expect(step.items.map((item) => item.name)).toEqual(['Item A'])
   })
 
   it('rejects malformed cursors', async () => {
@@ -218,14 +268,38 @@ describe('scanStep: hostile sites and tampered cursors', () => {
     const step = await scanStep({ url: 'https://shop.example/' }, shopify)
     expect(step.items.map((item) => item.name)).toEqual(['Ok'])
 
-    const woo = run({ 'https://shop.example/wp-json/wc/store/v1/products?per_page=100&page=1': [null, 1, 'x', { prices: null, name: 'W' }] })
+    const woo = run({ 'https://shop.example/wp-json/wc/store/v1/products?per_page=100&page=1': [null, 1, 'x', { prices: null, name: 'Wo' }] })
     const wooStep = await scanStep({ url: 'https://shop.example/' }, woo)
-    expect(wooStep.items.map((item) => item.name)).toEqual(['W'])
+    expect(wooStep.items.map((item) => item.name)).toEqual(['Wo'])
     const odd = run({ 'https://shop.example/products.json?limit=250&page=1': { products: 'nope' }, 'https://shop.example/': '<p>hi</p>' })
     await expect(scanStep({ url: 'https://shop.example/' }, odd)).rejects.toMatchObject({ status: 422 })
   })
 
   it('rejects an unparseable source url as an ImportError', async () => {
     await expect(scanStep({ url: 'not a url' }, run({}))).rejects.toBeInstanceOf(ImportError)
+  })
+})
+
+describe('scanStep: same-site matching', () => {
+  const queueFor = async (source, entries) => {
+    const routes = Object.fromEntries(entries.map((u) => [u.replace(/^(https:\/\/)[^/@]*@/, '$1'), product('Item X')]))
+    const cursor = { mode: 'html', queue: entries, listingNext: null, pages: 1, total: 0 }
+    const step = await scanStep({ url: source, cursor }, run(routes))
+    return step.items.length
+  }
+
+  it('rejects look-alike subdomains of the source and accepts www in either direction', async () => {
+    expect(await queueFor('https://shop.example/shop', ['https://shop.example.evil.com/products/a'])).toBe(0)
+    expect(await queueFor('https://shop.example/shop', ['https://www.shop.example/products/a'])).toBe(1)
+    expect(await queueFor('https://www.shop.example/shop', ['https://shop.example/products/a'])).toBe(1)
+  })
+
+  it('rejects a different port', async () => {
+    expect(await queueFor('https://shop.example/shop', ['https://shop.example:8443/products/a'])).toBe(0)
+  })
+
+  it('resolves user@host style urls to the real host', async () => {
+    expect(await queueFor('https://shop.example/shop', ['https://shop.example@evil.example/products/a'])).toBe(0)
+    expect(await queueFor('https://shop.example/shop', ['https://evil.example@shop.example/products/a'])).toBe(1)
   })
 })

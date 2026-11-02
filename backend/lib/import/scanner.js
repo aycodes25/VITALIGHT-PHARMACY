@@ -9,7 +9,8 @@ import { findNextPageUrl, findProductLinks, looksLikeProductUrl } from './links.
 export const LIMITS = { maxProducts: 200, maxListingPages: 20, productFetchesPerStep: 5 }
 export const NO_DATA_MESSAGE = 'This site does not expose product data that can be read automatically. Try a shop or category page, or add the products manually.'
 const STALE_MESSAGE = 'This scan can no longer be continued. Start a new scan.'
-const MAX_URL_LENGTH = 2048
+const MAX_URL_LENGTH = 512
+const REDIRECT_MESSAGE = 'The website redirected to a different address. Paste the final address instead.'
 
 const FEEDS = {
   shopify: { feedUrl: shopifyFeedUrl, parse: parseShopifyProducts, pageSize: SHOPIFY_PAGE_SIZE },
@@ -40,18 +41,31 @@ function sameSiteUrl(value, source) {
     return null
   }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
-  return siteKey(url) === siteKey(source) ? url.href : null
+  if (siteKey(url) !== siteKey(source)) return null
+  url.username = ''
+  url.password = ''
+  return url.href
 }
 
+// Same page regardless of a trailing slash on the path.
+const dedupeKey = (href) => href.replace(/\/(?=$|[?#])/, '')
+
 function sameSiteList(values, source, max) {
-  if (!Array.isArray(values)) return []
-  const out = new Set()
+  if (!Array.isArray(values)) return { list: [], truncated: false }
+  const out = new Map()
+  let truncated = false
   for (const value of values) {
-    if (out.size >= max) break
     const href = sameSiteUrl(value, source)
-    if (href) out.add(href)
+    if (!href) continue
+    const key = dedupeKey(href)
+    if (out.has(key)) continue
+    if (out.size >= max) {
+      truncated = true
+      break
+    }
+    out.set(key, href)
   }
-  return [...out]
+  return { list: [...out.values()], truncated }
 }
 
 const boundedInt = (value, min, max) => (Number.isInteger(value) && value >= min && value <= max ? value : null)
@@ -87,14 +101,14 @@ function htmlResult({ items, queue, listingNext, pages, total }, source) {
   const newTotal = total + kept.length
   const capped = newTotal >= LIMITS.maxProducts
   const nextUrl = pages >= LIMITS.maxListingPages ? null : sameSiteUrl(listingNext, source)
-  const safeQueue = sameSiteList(queue, source, LIMITS.maxProducts - newTotal)
+  const { list: safeQueue, truncated } = sameSiteList(queue, source, LIMITS.maxProducts - newTotal)
   const hasWork = safeQueue.length > 0 || Boolean(nextUrl)
   return {
     platform: 'page',
     items: kept,
-    limitReached: capped
+    limitReached: truncated || (capped
       ? kept.length < items.length || hasWork
-      : Boolean(listingNext) && !nextUrl,
+      : Boolean(listingNext) && !nextUrl),
     cursor: capped || !hasWork ? null : { mode: 'html', queue: safeQueue, listingNext: nextUrl, pages, total: newTotal },
   }
 }
@@ -105,13 +119,14 @@ function absorbListing(page, pagesDone, total, source) {
   const found = findNextPageUrl(page.text, page.url)
   const next = found && found !== page.url ? found : null
   if (embedded.length > 1) return htmlResult({ items: embedded, queue: [], listingNext: next, pages: pagesDone, total }, source)
-  return htmlResult({ items: [], queue: findProductLinks(page.text, page.url), listingNext: next, pages: pagesDone, total }, source)
+  return htmlResult({ items: [], queue: findProductLinks(page.text, page.url, { limit: LIMITS.maxProducts + 1 }), listingNext: next, pages: pagesDone, total }, source)
 }
 
 async function startHtml(source, opts) {
   const page = await fetchText(source.href, opts)
+  if (!sameSiteUrl(page.url, source)) throw new ImportError(REDIRECT_MESSAGE, 422)
   const embedded = productsFromHtml(page.text, page.url)
-  const links = findProductLinks(page.text, page.url)
+  const links = findProductLinks(page.text, page.url, { limit: LIMITS.maxProducts + 1 })
   if (embedded.length === 1 && (looksLikeProductUrl(page.url) || links.length === 0)) {
     return htmlResult({ items: embedded, queue: [], listingNext: null, pages: 1, total: 0 }, source)
   }
@@ -131,7 +146,7 @@ async function htmlStep(cursor, source, opts) {
       total: cursor.total,
     }, source)
   }
-  if (!cursor.listingNext) return htmlResult({ items: [], queue: [], listingNext: null, pages: cursor.pages, total: cursor.total }, source)
+  if (!cursor.listingNext || cursor.pages >= LIMITS.maxListingPages) return htmlResult({ items: [], queue: [], listingNext: cursor.listingNext, pages: cursor.pages, total: cursor.total }, source)
   const page = await fetchText(cursor.listingNext, opts)
   return absorbListing(page, cursor.pages + 1, cursor.total, source)
 }
@@ -145,7 +160,7 @@ function readCursor(cursor, source) {
     const pages = boundedInt(cursor.pages, 1, LIMITS.maxListingPages)
     if (pages === null) throw staleScan()
     const listingNext = cursor.listingNext == null ? null : sameSiteUrl(cursor.listingNext, source)
-    return { mode: 'html', queue: sameSiteList(cursor.queue, source, LIMITS.maxProducts), listingNext, pages, total }
+    return { mode: 'html', queue: sameSiteList(cursor.queue, source, LIMITS.maxProducts).list, listingNext, pages, total }
   }
   if (Object.hasOwn(FEEDS, cursor.mode)) {
     const page = boundedInt(cursor.page, 1, LIMITS.maxListingPages)
