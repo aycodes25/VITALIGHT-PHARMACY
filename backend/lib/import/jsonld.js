@@ -1,22 +1,41 @@
-import { absoluteUrl, makeItem } from './normalize.js'
+import { absoluteUrl, indexOfCI, makeItem, text } from './normalize.js'
 
-const SCRIPT = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+const LD_TYPE = /type=["']application\/ld\+json["']/i
 const MAX_BLOCKS = 50
 const MAX_NODES = 5000
 const MAX_DEPTH = 12
 const MAX_RESULTS = 500
-const MAX_HTML = 5_000_000
 
 const isObject = (value) => value !== null && typeof value === 'object'
-const asText = (html) => (typeof html === 'string' ? html.slice(0, MAX_HTML) : '')
 const asList = (value) => (Array.isArray(value) ? value : value == null ? [] : [value])
+
+// Linear scan for <script type="application/ld+json"> bodies. An unterminated tag or script ends the scan.
+function* scriptBodies(html) {
+  let from = 0
+  while (true) {
+    const start = indexOfCI(html, '<script', from)
+    if (start === -1) return
+    const tagEnd = html.indexOf('>', start + 7)
+    if (tagEnd === -1) return
+    if (!LD_TYPE.test(html.slice(start + 7, tagEnd))) {
+      from = tagEnd + 1
+      continue
+    }
+    const close = indexOfCI(html, '</script', tagEnd + 1)
+    if (close === -1) return
+    yield html.slice(tagEnd + 1, close)
+    const closeEnd = html.indexOf('>', close + 8)
+    if (closeEnd === -1) return
+    from = closeEnd + 1
+  }
+}
 
 function parseBlocks(html) {
   const blocks = []
-  for (const match of asText(html).matchAll(SCRIPT)) {
+  for (const body of scriptBodies(text(html))) {
     if (blocks.length >= MAX_BLOCKS) break
     try {
-      blocks.push(JSON.parse(match[1].trim()))
+      blocks.push(JSON.parse(body.trim()))
     } catch {
       // Invalid (or absurdly deep) JSON-LD is common; skip the block.
     }

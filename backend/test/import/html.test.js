@@ -192,3 +192,41 @@ describe('hostile input never throws', () => {
     expect(extractMetaProduct(html, PAGE)).toMatchObject({ name: "Men's Vitamin", price: 1000 })
   })
 })
+
+describe('hostile html is scanned in linear time', () => {
+  const LIMIT_MS = 500
+  const cases = {
+    'unterminated ld+json scripts': '<script type="application/ld+json">'.repeat(25000),
+    'script starts without >': '<script '.repeat(150000),
+    'anchor starts without >': '<a '.repeat(300000),
+    'meta starts without >': '<meta '.repeat(200000),
+    'link starts without >': '<link '.repeat(200000),
+    'title starts without >': '<title '.repeat(150000),
+  }
+
+  for (const [label, html] of Object.entries(cases)) {
+    it(`returns quickly for ${label}`, { timeout: 20000 }, () => {
+      const started = performance.now()
+      extractJsonLdProducts(html, PAGE)
+      extractJsonLdItemUrls(html, PAGE)
+      extractMetaProduct(html, PAGE)
+      findProductLinks(html, PAGE)
+      findNextPageUrl(html, PAGE)
+      expect(performance.now() - started).toBeLessThan(LIMIT_MS)
+    })
+  }
+
+  it('still extracts a valid block that precedes unterminated junk', { timeout: 20000 }, () => {
+    const html = ld({ '@type': 'Product', name: 'Zinc', offers: { price: 500 } }) + '<script type="application/ld+json">'.repeat(25000)
+    const started = performance.now()
+    const items = extractJsonLdProducts(html, PAGE)
+    expect(performance.now() - started).toBeLessThan(LIMIT_MS)
+    expect(items.map((item) => item.name)).toEqual(['Zinc'])
+  })
+
+  it('extracts two valid blocks separated by normal html, case-insensitively', () => {
+    const html = `${ld({ '@type': 'Product', name: 'Zinc' })}<div><p>hi</p></div>
+      <SCRIPT TYPE='application/LD+JSON'>${JSON.stringify({ '@type': 'Product', name: 'Iron' })}</SCRIPT>`
+    expect(extractJsonLdProducts(html, PAGE).map((item) => item.name)).toEqual(['Zinc', 'Iron'])
+  })
+})

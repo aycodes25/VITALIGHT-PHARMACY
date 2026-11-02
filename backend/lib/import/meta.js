@@ -1,12 +1,11 @@
-import { decodeEntities, makeItem } from './normalize.js'
+import { decodeEntities, findTags, makeItem, text } from './normalize.js'
 
-const MAX_HTML = 5_000_000
 const quoted = (attr) => new RegExp(`\\b${attr}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i')
 const NAME_ATTR = quoted('(?:property|name)')
 const CONTENT_ATTR = quoted('content')
 
 function metaContent(html, key) {
-  for (const tag of html.match(/<meta\b[^>]*>/gi) ?? []) {
+  for (const { tag } of findTags(html, ['meta'])) {
     const nameMatch = tag.match(NAME_ATTR)
     const name = nameMatch?.[1] ?? nameMatch?.[2]
     if (name?.toLowerCase() === key) {
@@ -18,12 +17,22 @@ function metaContent(html, key) {
   return null
 }
 
+// Text of the first <title> whose content (no '<') is directly followed by </title>.
+function titleText(html) {
+  for (const { end } of findTags(html, ['title'])) {
+    const lt = html.indexOf('<', end)
+    if (lt === -1) return ''
+    if (html.slice(lt, lt + 8).toLowerCase() === '</title>') return decodeEntities(html.slice(end, lt))
+  }
+  return ''
+}
+
 // Last-resort extraction from OpenGraph / product meta tags. Needs a price so that ordinary pages are not mistaken for products.
 export function extractMetaProduct(rawHtml, pageUrl) {
-  const html = typeof rawHtml === 'string' ? rawHtml.slice(0, MAX_HTML) : ''
+  const html = text(rawHtml)
   const price = metaContent(html, 'product:price:amount') ?? metaContent(html, 'og:price:amount')
   if (!price) return null
-  const title = metaContent(html, 'og:title') ?? decodeEntities(html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? '')
+  const title = metaContent(html, 'og:title') ?? titleText(html)
   return makeItem({
     name: title,
     description: metaContent(html, 'og:description'),

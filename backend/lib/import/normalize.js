@@ -1,5 +1,44 @@
 import { parsePrice } from './price.js'
 
+export const MAX_HTML = 5_000_000
+
+// Bounded string view of scraped HTML; anything that is not a string becomes ''.
+export const text = (html) => (typeof html === 'string' ? html.slice(0, MAX_HTML) : '')
+
+const isWordChar = (code) => (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || code === 95
+
+// Case-insensitive indexOf for a lowercase ASCII needle starting with '<'. Linear: never backtracks.
+export function indexOfCI(html, needle, from = 0) {
+  let i = html.indexOf('<', from)
+  while (i !== -1) {
+    if (html.slice(i, i + needle.length).toLowerCase() === needle) return i
+    i = html.indexOf('<', i + 1)
+  }
+  return -1
+}
+
+// Yields { tag, start, end } for each `<name ...>` (names are lowercase; case-insensitive match, word boundary after the name).
+// Stops entirely when a tag has no closing '>'. Linear in the input length.
+export function* findTags(html, names) {
+  const wanted = names.map((name) => name.toLowerCase())
+  let i = html.indexOf('<')
+  while (i !== -1) {
+    const name = wanted.find((candidate) => {
+      if (html.slice(i + 1, i + 1 + candidate.length).toLowerCase() !== candidate) return false
+      const next = html.charCodeAt(i + 1 + candidate.length)
+      return Number.isNaN(next) || !isWordChar(next)
+    })
+    if (name === undefined) {
+      i = html.indexOf('<', i + 1)
+      continue
+    }
+    const close = html.indexOf('>', i + 1 + name.length)
+    if (close === -1) return
+    yield { tag: html.slice(i, close + 1), start: i, end: close + 1 }
+    i = html.indexOf('<', close + 1)
+  }
+}
+
 const ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'", '&nbsp;': ' ' }
 
 export function decodeEntities(text) {

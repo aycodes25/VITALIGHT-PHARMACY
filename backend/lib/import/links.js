@@ -1,11 +1,7 @@
 import { extractJsonLdItemUrls } from './jsonld.js'
-import { absoluteUrl, decodeEntities } from './normalize.js'
+import { absoluteUrl, decodeEntities, findTags, text } from './normalize.js'
 
 const PRODUCT_PATH = /\/(?:products?|items?)\/[^/?#]+/i
-const MAX_HTML = 5_000_000
-
-const text = (html) => (typeof html === 'string' ? html.slice(0, MAX_HTML) : '')
-
 function parseUrl(value) {
   if (typeof value !== 'string') return null
   try {
@@ -47,7 +43,7 @@ export function findProductLinks(rawHtml, pageUrl, { limit = 200 } = {}) {
   }
 
   for (const href of extractJsonLdItemUrls(html, pageUrl)) add(href, { trusted: true })
-  for (const tag of html.match(/<a\b[^>]*>/gi) ?? []) {
+  for (const { tag } of findTags(html, ['a'])) {
     if (urls.size >= max) break
     const href = hrefOf(tag)
     if (href) add(href)
@@ -66,7 +62,7 @@ export function findNextPageUrl(rawHtml, pageUrl) {
   const html = text(rawHtml)
   const page = parseWebUrl(pageUrl)
   if (!page) return null
-  const tags = html.match(/<(?:link|a)\b[^>]*>/gi) ?? []
+  const tags = [...findTags(html, ['link', 'a'])].map(({ tag }) => tag)
 
   for (const tag of tags) {
     if (!/\brel\s*=\s*["'][^"']*\bnext\b[^"']*["']/i.test(tag)) continue
