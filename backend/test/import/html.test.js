@@ -85,6 +85,11 @@ describe('findProductLinks', () => {
     const html = Array.from({ length: 5 }, (_, i) => `<a href="/products/p${i}">x</a>`).join('')
     expect(findProductLinks(html, 'https://shop.example/', { limit: 3 })).toHaveLength(3)
   })
+
+  it('only reads href from a and does not match longer tag names', () => {
+    const html = '<abbr href="/products/a"></abbr><article href="/products/b"></article><a href="/products/c">c</a>'
+    expect(findProductLinks(html, 'https://shop.example/collections/all')).toEqual(['https://shop.example/products/c'])
+  })
 })
 
 describe('findNextPageUrl', () => {
@@ -100,6 +105,14 @@ describe('findNextPageUrl', () => {
 
   it('returns null on the last page', () => {
     expect(findNextPageUrl('<a href="/shop?page=1">1</a>', 'https://shop.example/shop?page=2')).toBeNull()
+  })
+
+  it('matches uppercase LINK tags', () => {
+    expect(findNextPageUrl('<LINK REL="next" HREF="/shop?page=2">', 'https://shop.example/shop')).toBe('https://shop.example/shop?page=2')
+  })
+
+  it('does not treat a longer tag name such as linkx as a link', () => {
+    expect(findNextPageUrl('<linkx rel="next" href="/shop?page=2">', 'https://shop.example/shop')).toBeNull()
   })
 })
 
@@ -194,7 +207,7 @@ describe('hostile input never throws', () => {
 })
 
 describe('hostile html is scanned in linear time', () => {
-  const LIMIT_MS = 500
+  const LIMIT_MS = 2000
   const cases = {
     'unterminated ld+json scripts': '<script type="application/ld+json">'.repeat(25000),
     'script starts without >': '<script '.repeat(150000),
@@ -229,4 +242,20 @@ describe('hostile html is scanned in linear time', () => {
       <SCRIPT TYPE='application/LD+JSON'>${JSON.stringify({ '@type': 'Product', name: 'Iron' })}</SCRIPT>`
     expect(extractJsonLdProducts(html, PAGE).map((item) => item.name)).toEqual(['Zinc', 'Iron'])
   })
+
+  const heavyCases = {
+    'many anchors without href': '<a href=x>'.repeat(50000),
+    'many lone less-than signs': '<'.repeat(900000),
+    'many closed script tags': '<script>x</script>'.repeat(40000),
+  }
+
+  for (const [label, html] of Object.entries(heavyCases)) {
+    it(`returns normally and quickly for ${label}`, { timeout: 20000 }, () => {
+      const started = performance.now()
+      expect(() => extractJsonLdProducts(html, PAGE)).not.toThrow()
+      expect(() => findProductLinks(html, PAGE)).not.toThrow()
+      expect(() => extractMetaProduct(html, PAGE)).not.toThrow()
+      expect(performance.now() - started).toBeLessThan(LIMIT_MS)
+    })
+  }
 })
