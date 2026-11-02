@@ -36,7 +36,11 @@ export async function safeFetch(rawUrl, {
     }
     const location = response.headers.get('location')
     if (response.status >= 300 && response.status < 400 && location) {
-      current = new URL(location, url).toString()
+      try {
+        current = new URL(location, url).toString()
+      } catch {
+        throw new ImportError('The website sent an invalid redirect.', 502)
+      }
       continue
     }
     if ([401, 403, 429].includes(response.status)) {
@@ -46,7 +50,13 @@ export async function safeFetch(rawUrl, {
     if (Number(response.headers.get('content-length')) > maxBytes) {
       throw new ImportError('The page is too large to scan.', 502)
     }
-    const body = await readLimited(response, maxBytes)
+    let body
+    try {
+      body = await readLimited(response, maxBytes)
+    } catch (err) {
+      if (err instanceof ImportError) throw err
+      throw new ImportError('The website did not respond in time.', 502)
+    }
     return { url: url.toString(), contentType: response.headers.get('content-type') || '', body }
   }
   throw new ImportError('The website redirected too many times.', 502)

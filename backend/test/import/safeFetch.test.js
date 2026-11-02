@@ -58,6 +58,21 @@ describe('safeFetch', () => {
     const fetchImpl = async () => { throw new Error('socket hang up') }
     await expect(safeFetch('https://a.example/x', { fetchImpl, lookup: publicLookup })).rejects.toThrow(/did not respond/)
   })
+
+  it('maps body-read failures to a friendly error', async () => {
+    const fetchImpl = async () => new Response(new ReadableStream({
+      start(c) {
+        c.enqueue(new TextEncoder().encode('ab'))
+        c.error(new Error('socket reset'))
+      },
+    }))
+    await expect(safeFetch('https://a.example/x', { fetchImpl, lookup: publicLookup })).rejects.toThrow(/did not respond/)
+  })
+
+  it('maps a malformed redirect location to a friendly error', async () => {
+    const fetchImpl = async () => new Response(null, { status: 302, headers: { location: 'http://' } })
+    await expect(safeFetch('https://a.example/x', { fetchImpl, lookup: publicLookup })).rejects.toThrow(/invalid redirect/)
+  })
 })
 
 describe('fetchText / fetchJson', () => {
