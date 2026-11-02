@@ -4,8 +4,9 @@ import { createAuth } from './lib/auth.js'
 import { publicRoutes } from './routes/public.js'
 import { adminRoutes } from './routes/admin.js'
 import { accountRoutes } from './routes/account.js'
+import { importRoutes } from './routes/import.js'
 
-export function createApp({ supabase = null, supabaseUrl = '', admins = new Set(), starter, clientDistPath }) {
+export function createApp({ supabase = null, supabaseUrl = '', admins = new Set(), starter, clientDistPath, importFetchOpts = {} }) {
   const app = express()
   const auth = createAuth({ supabase, admins })
 
@@ -23,6 +24,7 @@ export function createApp({ supabase = null, supabaseUrl = '', admins = new Set(
   app.use('/api', publicRoutes({ supabase, starter }))
   app.use('/api/account', accountRoutes({ supabase }))
   app.use('/api/admin', adminRoutes({ supabase, supabaseUrl, auth }))
+  app.use('/api/admin/import', importRoutes({ supabase, supabaseUrl, auth, fetchOpts: importFetchOpts }))
   app.use('/api/admin', auth.requireDatabase)
   app.use('/api/admin', (_req, res) => res.status(404).json({ error: 'Admin endpoint not found.' }))
 
