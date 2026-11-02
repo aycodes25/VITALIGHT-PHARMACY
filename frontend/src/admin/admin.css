@@ -274,3 +274,51 @@
 .photo-actions button { padding: 4px 8px; border: 1px solid #d9e0e8; border-radius: 4px; background: #fff; color: #0b2a50; font-size: 9px; cursor: pointer; }
 .photo-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 .photo-note { color: #8a5a00; font-size: 8px; }
+
+/* ---- AI Import ---- */
+.import-page { display: grid; gap: 14px; }
+.import-scan-form { display: flex; gap: 8px; padding: 14px 16px; }
+.import-scan-form input { flex: 1; min-width: 0; min-height: 39px; border: 1px solid #e4e9ee; border-radius: 4px; padding: 0 11px; font-size: 10px; color: var(--admin-ink); }
+.import-progress { margin: 0; padding: 0 16px 14px; color: #55775f; font-size: 9px; }
+.import-recent { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 16px 14px; }
+.import-recent span { color: var(--admin-muted); font-size: 8px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.import-recent button { border: 1px solid #e4e9ee; border-radius: 12px; padding: 4px 9px; background: #fff; color: #65758a; font-size: 8px; cursor: pointer; }
+.import-recent button.selected, .import-recent button:hover { border-color: var(--admin-navy); color: var(--admin-navy); }
+.import-bulk { display: flex; flex-wrap: wrap; gap: 8px; }
+.import-summary { display: flex; flex-wrap: wrap; gap: 18px; padding: 12px 16px; border-bottom: 1px solid #eef0f3; color: #65758a; font-size: 9px; }
+.import-summary strong { margin-right: 4px; color: var(--admin-navy); font: 700 14px 'Manrope', sans-serif; }
+.import-list { display: grid; gap: 10px; padding: 14px 16px; }
+.import-card { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; padding: 12px; border: 1px solid #e9edf1; border-radius: 5px; background: #fff; }
+.import-card.import-approved { border-color: #bfe0c8; background: #f6fbf7; }
+.import-card.import-rejected { opacity: .6; }
+.import-card-media { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
+.import-thumb { position: relative; width: 66px; height: 66px; border: 1px solid #e9edf1; border-radius: 4px; background: #f7f8fa; }
+.import-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.import-thumb button { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border: 0; border-radius: 50%; background: #c93a3a; color: #fff; font-size: 11px; line-height: 16px; cursor: pointer; }
+.import-no-photo { color: #8a96a6; font-size: 9px; }
+.import-card-body { min-width: 0; display: grid; gap: 8px; align-content: start; }
+.import-card-body h3 { margin: 0; color: var(--admin-navy); font: 700 12px 'Manrope', sans-serif; }
+.import-price { margin: 0; color: var(--admin-ink); font-size: 11px; font-weight: 700; }
+.import-price s { margin-left: 8px; color: #8a96a6; font-weight: 400; }
+.import-price em { margin-left: 8px; color: #8a5a00; font-size: 8px; font-style: normal; }
+.import-detail { margin: 0; color: #65758a; font-size: 9px; line-height: 1.5; }
+.import-status { justify-self: start; border-radius: 10px; padding: 2px 8px; font-size: 8px; font-weight: 700; }
+.import-status-approved { background: #dff3e5; color: #25693a; }
+.import-status-rejected { background: #f0f1f3; color: #65758a; }
+.import-duplicate { justify-self: start; border-radius: 4px; padding: 3px 7px; background: #fff4d6; color: #8a5a00; font-size: 8px; font-weight: 700; }
+.import-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.import-edit-grid .import-wide { grid-column: 1 / -1; }
+.import-card label { display: grid; gap: 4px; color: #465a74; font-size: 8px; font-weight: 700; }
+.import-card input, .import-card select, .import-card textarea { min-width: 0; border: 1px solid #e4e9ee; border-radius: 4px; padding: 7px 8px; font-size: 10px; color: var(--admin-ink); background: #fff; }
+.import-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; }
+.import-source { justify-self: start; color: #65758a; font-size: 8px; }
+.import-problems { margin: 0; padding-left: 14px; color: #b3261e; font-size: 8px; }
+.import-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.import-actions .admin-primary-button { min-height: 33px; }
+.import-actions .admin-secondary-button { min-height: 33px; }
+@media (max-width: 720px) {
+  .import-card { grid-template-columns: 1fr; }
+  .import-scan-form { flex-direction: column; }
+  .import-edit-grid { grid-template-columns: 1fr; }
+}
+.import-empty { margin: 0; padding: 14px 16px; color: #65758a; font-size: 10px; }
