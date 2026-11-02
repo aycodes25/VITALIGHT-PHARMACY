@@ -6,7 +6,10 @@ export function decodeEntities(text) {
   return String(text ?? '').replace(/&(?:amp|lt|gt|quot|apos|nbsp|#39|#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6}));/g, (match, dec, hex) => {
     if (dec === undefined && hex === undefined) return ENTITIES[match] ?? match
     const code = dec !== undefined ? Number.parseInt(dec, 10) : Number.parseInt(hex, 16)
-    if (!Number.isInteger(code) || code < 0 || code > 0x10ffff) return match
+    if (!Number.isInteger(code) || code > 0x10ffff) return match
+    // Leave NUL, lone surrogates and control characters (except tab, LF, CR) as written: Postgres rejects them.
+    if (code === 0 || (code >= 0xd800 && code <= 0xdfff)) return match
+    if ((code < 0x20 && code !== 9 && code !== 10 && code !== 13) || (code >= 0x7f && code <= 0x9f)) return match
     try { return String.fromCodePoint(code) } catch { return match }
   })
 }

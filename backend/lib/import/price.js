@@ -4,7 +4,8 @@ export function parsePrice(value) {
   if (value === null || value === undefined || value === '') return null
   if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? Math.round(value) : null
   const raw = String(value).trim()
-  if (raw.startsWith('-')) return null
+  // Negative prices: a hyphen, minus sign (U+2212) or dash (U+2010-U+2015) directly before the digits.
+  if (/[-‐-―−]\s*\d/.test(raw)) return null
   const runs = raw.split(/[^\d.,]+/).filter(Boolean)
   if (runs.length !== 1 || !/\d/.test(runs[0])) return null
   const text = runs[0]

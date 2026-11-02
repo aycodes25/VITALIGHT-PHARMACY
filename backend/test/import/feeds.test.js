@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseShopifyProducts, shopifyFeedUrl } from '../../lib/import/shopify.js'
 import { parseWooProducts, wooFeedUrl } from '../../lib/import/woocommerce.js'
-import { makeItem } from '../../lib/import/normalize.js'
+import { decodeEntities, makeItem } from '../../lib/import/normalize.js'
 
 describe('makeItem', () => {
   it('drops items without a usable name and ignores a "was" price that is not higher', () => {
@@ -119,5 +119,19 @@ describe('hostile data', () => {
     expect(name('It&#x27;s')).toBe("It's")
     expect(name('x &amp;lt; y')).toBe('x &lt; y')
     expect(name('bad &#99999999; ok')).toBe('bad &#99999999; ok')
+  })
+})
+
+describe('decodeEntities', () => {
+  it.each(['&#0;', '&#x0;', '&#00000;', '&#xD800;', '&#55357;', '&#7;', '&#x85;'])(
+    'leaves %s unchanged (NUL, lone surrogate, or control character)',
+    (entity) => expect(decodeEntities(entity)).toBe(entity),
+  )
+
+  it('still decodes tab, newline, carriage return and apostrophe entities', () => {
+    expect(decodeEntities('&#9;')).toBe('\t')
+    expect(decodeEntities('&#10;')).toBe('\n')
+    expect(decodeEntities('&#13;')).toBe('\r')
+    expect(decodeEntities('&#039;')).toBe("'")
   })
 })
