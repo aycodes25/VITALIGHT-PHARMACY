@@ -5,11 +5,11 @@ import { draftFromItem, itemProblems, payloadFromDraft, safeHttpUrl, summarize }
 const MAX_SCAN_STEPS = 60
 const base = '/api/admin/import'
 
-function ImportCard({ item, draft, categories, editing, busy, onChange, onToggleEdit, onApprove, onReject }) {
+function ImportCard({ item, draft, label, categories, editing, busy, onChange, onToggleEdit, onApprove, onReject }) {
   const problems = itemProblems(draft)
   const pending = item.status === 'pending'
   const set = (key) => (event) => onChange({ ...draft, [key]: event.target.value })
-  const name = draft.name || 'product'
+  const name = label
   const images = draft.images.filter((src) => safeHttpUrl(src))
   const sourceUrl = safeHttpUrl(item.data.source_url)
   return (
@@ -80,14 +80,24 @@ export default function ImportPage({ authRequest, categories, onProductsChanged,
   const [progress, setProgress] = useState('')
   const [scanned, setScanned] = useState(false)
   const busyRef = useRef(false)
+  const mounted = useRef(true)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
+
+  // Parent callbacks must not fire once the page has been left.
+  const fail = useCallback((text) => { if (mounted.current) setError(text) }, [setError])
+  const note = useCallback((text) => { if (mounted.current) setMessage(text) }, [setMessage])
 
   const loadRecent = useCallback(async () => {
     try {
       setRecent((await authRequest(`${base}/batches`)).batches)
     } catch (loadError) {
-      setError(loadError.message)
+      fail(loadError.message)
     }
-  }, [authRequest, setError])
+  }, [authRequest, fail])
 
   useEffect(() => { loadRecent() }, [loadRecent])
 
@@ -101,8 +111,8 @@ export default function ImportPage({ authRequest, categories, onProductsChanged,
 
   async function scan(event) {
     event.preventDefault()
-    setError('')
-    setMessage('')
+    fail('')
+    note('')
     setScanning(true)
     setScanned(false)
     let batchId = null
@@ -110,19 +120,22 @@ export default function ImportPage({ authRequest, categories, onProductsChanged,
     let finished = false
     try {
       for (let step = 0; step < MAX_SCAN_STEPS; step += 1) {
+        if (!mounted.current) return
         setProgress(found ? `Scanning… ${found} products found so far` : 'Scanning the website…')
         const result = await authRequest(`${base}/scan`, { method: 'POST', body: JSON.stringify(batchId ? { batchId } : { url: url.trim() }) })
         batchId = result.batchId
         found += result.added
-        if (result.limitReached) setMessage('Stopped at the scan limit (200 products). Scan a more specific category page to get the rest.')
+        if (!mounted.current) return
+        if (result.limitReached) note('Stopped at the scan limit (200 products). Scan a more specific category page to get the rest.')
         if (result.done) { finished = true; break }
       }
-      if (!finished) setMessage('The scan was stopped before the whole site was read. The products found so far are shown below.')
+      if (!finished) note('The scan was stopped before the whole site was read. The products found so far are shown below.')
       await openBatch(batchId)
+      if (!mounted.current) return
       setScanned(true)
       loadRecent()
     } catch (scanError) {
-      setError(scanError.message)
+      fail(scanError.message)
       // The batch stays on the server, so keep what was already found reachable.
       if (batchId) {
         loadRecent()
@@ -136,61 +149,84 @@ export default function ImportPage({ authRequest, categories, onProductsChanged,
 
   const mark = (id, status) => setItems((current) => current.map((item) => (item.id === id ? { ...item, status } : item)))
 
-  async function approve(item) {
-    if (busyRef.current) return false
-    busyRef.current = true
-    setBusy(true)
-    setError('')
+  // The single-item actions. They do not touch the busy flags, so a bulk run keeps the page locked for its whole length.
+  async function approveCore(item) {
+    fail('')
     try {
       const result = await authRequest(`${base}/items/${item.id}/approve`, { method: 'POST', body: JSON.stringify(payloadFromDraft(drafts[item.id])) })
       mark(item.id, 'approved')
-      setMessage(result.warnings?.length ? `“${drafts[item.id].name}” was saved. ${result.warnings.join(' ')}` : `“${drafts[item.id].name}” was added to your products.`)
+      note(result.warnings?.length ? `“${drafts[item.id].name}” was saved. ${result.warnings.join(' ')}` : `“${drafts[item.id].name}” was added to your products.`)
       onProductsChanged()
       return true
     } catch (approveError) {
-      setError(approveError.message)
+      fail(approveError.message)
       return false
-    } finally {
-      busyRef.current = false
-      setBusy(false)
     }
   }
 
-  async function reject(item) {
-    if (busyRef.current) return false
-    busyRef.current = true
-    setBusy(true)
-    setError('')
+  async function rejectCore(item) {
+    fail('')
     try {
       await authRequest(`${base}/items/${item.id}/reject`, { method: 'POST' })
       mark(item.id, 'rejected')
       return true
     } catch (rejectError) {
-      setError(rejectError.message)
+      fail(rejectError.message)
       return false
-    } finally {
-      busyRef.current = false
-      setBusy(false)
     }
   }
 
+  // Runs `task` while the whole page is locked; a second action cannot start until it ends.
+  async function locked(task) {
+    if (busyRef.current) return false
+    busyRef.current = true
+    setBusy(true)
+    try {
+      return await task()
+    } finally {
+      busyRef.current = false
+      if (mounted.current) setBusy(false)
+    }
+  }
+
+  const approve = (item) => locked(() => approveCore(item))
+  const reject = (item) => locked(() => rejectCore(item))
+
   async function approveAllValid() {
     const targets = items.filter((item) => item.status === 'pending' && itemProblems(drafts[item.id]).length === 0)
-    if (!targets.length || !window.confirm(`Approve ${targets.length} product${targets.length === 1 ? '' : 's'} and add them to your store?`)) return
-    for (const item of targets) {
-      if (!(await approve(item))) break
-    }
+    if (!targets.length) return
+    const flagged = targets.filter((item) => item.duplicate).length
+    const warning = flagged ? ` ${flagged} of them ${flagged === 1 ? 'is' : 'are'} flagged as already in your store.` : ''
+    if (!window.confirm(`Approve ${targets.length} product${targets.length === 1 ? '' : 's'} and add them to your store?${warning}`)) return
+    // A failed item stops the run; its error is already shown.
+    await locked(async () => {
+      for (const item of targets) {
+        if (!mounted.current || !(await approveCore(item))) break
+      }
+    })
   }
 
   async function rejectAllPending() {
     const targets = items.filter((item) => item.status === 'pending')
     if (!targets.length || !window.confirm(`Reject ${targets.length} pending product${targets.length === 1 ? '' : 's'}?`)) return
-    for (const item of targets) {
-      if (!(await reject(item))) break
-    }
+    await locked(async () => {
+      for (const item of targets) {
+        if (!mounted.current || !(await rejectCore(item))) break
+      }
+    })
   }
 
   const counts = summarize(items)
+  // Same-named products get their position added so every accessible label is unique.
+  const nameCounts = new Map()
+  for (const item of items) {
+    const key = drafts[item.id]?.name || 'product'
+    nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1)
+  }
+  const labelFor = (item, position) => {
+    const key = drafts[item.id]?.name || 'product'
+    return nameCounts.get(key) > 1 ? `${key} (item ${position + 1})` : key
+  }
   return (
     <div className="import-page">
       <section className="admin-panel">
@@ -203,7 +239,7 @@ export default function ImportPage({ authRequest, categories, onProductsChanged,
         {recent.length > 0 && (
           <div className="import-recent">
             <span>Recent scans</span>
-            {recent.map((entry) => <button type="button" key={entry.id} className={batch?.id === entry.id ? 'selected' : ''} onClick={() => openBatch(entry.id).catch((openError) => setError(openError.message))}>{entry.source_url.replace(/^https?:\/\//, '')}</button>)}
+            {recent.map((entry) => <button type="button" key={entry.id} className={batch?.id === entry.id ? 'selected' : ''} onClick={() => openBatch(entry.id).catch((openError) => fail(openError.message))}>{entry.source_url.replace(/^https?:\/\//, '')}</button>)}
           </div>
         )}
       </section>
@@ -225,11 +261,12 @@ export default function ImportPage({ authRequest, categories, onProductsChanged,
           </div>
           {scanned && counts.total === 0 && <p className="import-empty">No products were found on that page. Try a shop or category page, such as a /collections/ link.</p>}
           <div className="import-list">
-            {items.map((item) => (
+            {items.map((item, position) => (
               <ImportCard
                 key={item.id}
                 item={item}
                 draft={drafts[item.id]}
+                label={labelFor(item, position)}
                 categories={categories}
                 editing={editingId === item.id}
                 busy={busy}

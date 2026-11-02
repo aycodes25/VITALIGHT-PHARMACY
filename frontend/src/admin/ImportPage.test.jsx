@@ -69,6 +69,18 @@ describe('ImportPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Scan' }))
     return { authRequest, ...props }
   }
+  async function scanWithUnmount(handlers) {
+    const authRequest = vi.fn(async (path, options = {}) => {
+      if (handlers[path]) return handlers[path](options)
+      if (path === '/api/admin/import/batches') return { batches: [] }
+      throw new Error(`unexpected request ${path}`)
+    })
+    const props = { authRequest, categories: [], onProductsChanged: vi.fn(), setError: vi.fn(), setMessage: vi.fn() }
+    const view = render(<ImportPage {...props} />)
+    fireEvent.change(screen.getByLabelText('Website address'), { target: { value: 'https://shop.example/' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Scan' }))
+    return { authRequest, ...props, unmount: view.unmount }
+  }
   const doneScan = () => ({ batchId: 'b1', added: 1, done: true, platform: 'shopify', limitReached: false })
 
   it('says so when a scan finds nothing', async () => {
@@ -125,6 +137,117 @@ describe('ImportPage', () => {
     expect(screen.getByTestId('import-pending').textContent).toBe('1')
     expect(screen.getByTestId('import-approved').textContent).toBe('0')
     expect(onProductsChanged).not.toHaveBeenCalled()
+  })
+
+  async function scanTwo(handlers = {}, items) {
+    const list = items ?? [scanned('i1', 'Vitamin C'), scanned('i2', 'Zinc')]
+    const result = await scanWith({ '/api/admin/import/scan': () => ({ ...doneScan(), added: list.length }), ...handlers }, list)
+    await waitFor(() => expect(screen.getByTestId('import-total').textContent).toBe(String(list.length)))
+    return result
+  }
+
+  it('approves all valid products only after the owner confirms, and mentions flagged duplicates', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const { authRequest } = await scanTwo({
+      '/api/admin/import/items/i1/approve': () => ({ product: { id: 'a' }, warnings: [] }),
+      '/api/admin/import/items/i2/approve': () => ({ product: { id: 'b' }, warnings: [] }),
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Approve all valid' }))
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(confirm.mock.calls[0][0]).toMatch(/Approve 2 products/)
+    expect(confirm.mock.calls[0][0]).toMatch(/1 of them is flagged as already in your store/)
+    expect(authRequest.mock.calls.some(([path]) => path.endsWith('/approve'))).toBe(false)
+
+    confirm.mockReturnValue(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Approve all valid' }))
+    await waitFor(() => expect(screen.getByTestId('import-approved').textContent).toBe('2'))
+    confirm.mockRestore()
+  })
+
+  it('omits the duplicate note when nothing is flagged and locks the page during a bulk run', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    let release
+    await scanTwo({
+      '/api/admin/import/items/i1/approve': () => new Promise((resolve) => { release = () => resolve({ product: { id: 'a' }, warnings: [] }) }),
+      '/api/admin/import/items/i2/approve': () => ({ product: { id: 'b' }, warnings: [] }),
+    }, [scanned('i1', 'Vitamin C'), { ...scanned('i3', 'Zinc'), id: 'i2', duplicate: null }])
+    fireEvent.click(screen.getByRole('button', { name: 'Approve all valid' }))
+    expect(confirm.mock.calls[0][0]).not.toMatch(/flagged/)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Reject Zinc' }).disabled).toBe(true))
+    release()
+    await waitFor(() => expect(screen.getByTestId('import-approved').textContent).toBe('2'))
+    expect(screen.getByRole('button', { name: 'Approve all valid' }).disabled).toBe(true)
+    confirm.mockRestore()
+  })
+
+  it('stops the bulk run at the first failure and shows its error', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { setError, authRequest } = await scanTwo({
+      '/api/admin/import/items/i1/approve': () => { throw new Error('Nope.') },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Approve all valid' }))
+    await waitFor(() => expect(setError).toHaveBeenCalledWith('Nope.'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Approve all valid' }).disabled).toBe(false))
+    expect(authRequest.mock.calls.some(([path]) => path === '/api/admin/import/items/i2/approve')).toBe(false)
+    confirm.mockRestore()
+  })
+
+  it('does not reject anything when the owner cancels Reject all', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const { authRequest } = await scanTwo()
+    fireEvent.click(screen.getByRole('button', { name: 'Reject all' }))
+    expect(confirm).toHaveBeenCalled()
+    expect(authRequest.mock.calls.some(([path]) => path.endsWith('/reject'))).toBe(false)
+    confirm.mockRestore()
+  })
+
+  it('toggles edit mode', async () => {
+    await scanTwo()
+    expect(screen.queryByLabelText('Name of Vitamin C')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Vitamin C' }))
+    expect(screen.getByLabelText('Name of Vitamin C')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Done editing Vitamin C' }))
+    expect(screen.queryByLabelText('Name of Vitamin C')).toBeNull()
+  })
+
+  it('shows a note when the site currency is not NGN', async () => {
+    const usd = scanned('i1', 'Vitamin C')
+    usd.data.currency = 'USD'
+    await scanTwo({}, [usd])
+    expect(screen.getByText('Site currency: USD')).toBeTruthy()
+  })
+
+  it('includes the server warnings in the message after approving', async () => {
+    const { setMessage } = await scanTwo({
+      '/api/admin/import/items/i1/approve': () => ({ product: { id: 'a' }, warnings: ['A photo could not be copied.'] }),
+    }, [scanned('i1', 'Vitamin C')])
+    fireEvent.click(screen.getByRole('button', { name: 'Approve Vitamin C' }))
+    await waitFor(() => expect(setMessage).toHaveBeenCalledWith('“Vitamin C” was saved. A photo could not be copied.'))
+  })
+
+  it('gives same-named products distinct labels and survives duplicate image urls', async () => {
+    const a = scanned('i1', 'Zinc')
+    a.data.images = ['https://cdn.example/a.jpg', 'https://cdn.example/a.jpg']
+    const b = scanned('i2', 'Zinc')
+    await scanTwo({}, [a, { ...b, duplicate: null }])
+    expect(screen.getByRole('button', { name: 'Approve Zinc (item 1)' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Approve Zinc (item 2)' })).toBeTruthy()
+    expect(document.querySelectorAll('article')[0].querySelectorAll('img')).toHaveLength(1)
+  })
+
+  it('stops scanning and stays quiet after the page is left', async () => {
+    let calls = 0
+    let release
+    const { setMessage, setError, unmount } = await scanWithUnmount({
+      '/api/admin/import/scan': () => { calls += 1; return new Promise((resolve) => { release = () => resolve({ ...doneScan(), added: 0, done: false, limitReached: true }) }) },
+    })
+    await waitFor(() => expect(calls).toBe(1))
+    unmount()
+    release()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(calls).toBe(1)
+    expect(setMessage).not.toHaveBeenCalledWith(expect.stringMatching(/scan limit/))
+    expect(setError).not.toHaveBeenCalledWith(expect.stringMatching(/./))
   })
 
   it('does not render unsafe source links or image URLs', async () => {

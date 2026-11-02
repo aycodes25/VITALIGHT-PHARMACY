@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { approveItem } from '../../lib/import/approve.js'
 import { fakeFetch, publicLookup, PNG_BYTES } from '../helpers/fakeFetch.js'
 import { fakeSupabase } from '../fakeSupabase.js'
@@ -180,9 +180,29 @@ describe('approveItem hardening', () => {
   })
 
   it('decides the content type from magic bytes, not headers', async () => {
-    const { supabase, fetchOpts } = setup({ routes: { [IMG]: Buffer.from('<html>fake</html>') } })
+    const { supabase, fetchOpts } = setup({ routes: { [IMG]: { body: '<html>fake</html>', contentType: 'image/png' } } })
     const result = await approveItem({ supabase, supabaseUrl, item, edits, fetchOpts })
     expect(supabase.uploads).toHaveLength(0)
     expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toMatch(/not a JPEG, PNG or WebP/)
+  })
+
+  it('trims the brand and drops it when empty', async () => {
+    const first = setup()
+    await approveItem({ supabase: first.supabase, supabaseUrl, item, edits: { ...edits, brand: '  Acme  ' }, fetchOpts: first.fetchOpts })
+    expect(inserted(first.supabase).brand).toBe('Acme')
+    const second = setup()
+    await approveItem({ supabase: second.supabase, supabaseUrl, item, edits: { ...edits, brand: '   ' }, fetchOpts: second.fetchOpts })
+    expect(inserted(second.supabase).brand).toBeUndefined()
+  })
+
+  it('logs a failed storage cleanup without throwing a different error', async () => {
+    const { supabase, fetchOpts } = setup({ insertResult: { data: null, error: { code: '23503', message: 'fk' } } })
+    const original = supabase.storage.from
+    supabase.storage.from = (bucket) => ({ ...original(bucket), remove: async () => ({ error: { message: 'storage down' } }) })
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(approveItem({ supabase, supabaseUrl, item, edits, fetchOpts })).rejects.toMatchObject({ status: 400 })
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('storage down'))
+    spy.mockRestore()
   })
 })

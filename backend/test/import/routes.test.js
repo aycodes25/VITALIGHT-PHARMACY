@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../../app.js'
 import { parseAdminEmails } from '../../lib/auth.js'
@@ -105,6 +105,27 @@ describe('GET /batches/:id', () => {
     }])
   })
 
+  it('orders items stably and reports truncation when more than 500 exist', async () => {
+    const rows = Array.from({ length: 501 }, (_, i) => ({ id: `id-${i}`, status: 'pending', product_id: null, data: { name: `P${i}` } }))
+    const supabase = fakeSupabase({
+      user: adminUser,
+      results: { import_batches: { data: batchRow, error: null }, import_items: { data: rows, error: null }, categories: { data: [], error: null }, products: { data: [], error: null } },
+    })
+    const res = await admin(request(appWith(supabase)).get(`/api/admin/import/batches/${BATCH}`))
+    expect(res.body.items).toHaveLength(500)
+    expect(res.body.truncated).toBe(true)
+    const itemOps = ops(supabase, 'import_items')
+    expect(itemOps.filter(([name]) => name === 'order').map(([, args]) => args[0])).toEqual(['created_at', 'id'])
+    expect(itemOps.find(([name]) => name === 'limit')[1]).toEqual([501])
+    expect(ops(supabase, 'products').find(([name]) => name === 'limit')[1]).toEqual([5000])
+  })
+
+  it('does not flag truncation for a short list', async () => {
+    const supabase = fakeSupabase({ user: adminUser, results: { import_batches: { data: batchRow, error: null }, import_items: { data: [], error: null } } })
+    const res = await admin(request(appWith(supabase)).get(`/api/admin/import/batches/${BATCH}`))
+    expect(res.body.truncated).toBe(false)
+  })
+
   it('answers 404 for an unknown batch', async () => {
     const supabase = fakeSupabase({ user: adminUser, results: { import_batches: { data: null, error: null } } })
     expect((await admin(request(appWith(supabase)).get(`/api/admin/import/batches/${BATCH}`))).status).toBe(404)
@@ -146,6 +167,34 @@ describe('POST /items/:id/approve and /reject', () => {
     expect(res.status).toBe(400)
     const updates = ops(supabase, 'import_items').filter(([name]) => name === 'update').map(([, args]) => args[0])
     expect(updates).toEqual([{ status: 'approved' }, { status: 'pending' }])
+  })
+
+  it('guards the approve claim and the reject update with a pending status check', async () => {
+    const approveDb = fakeSupabase({
+      user: adminUser,
+      results: { import_items: { data: pending, error: null }, products: (index) => (index === 0 ? { data: [], error: null } : { data: { id: 'zinc-50mg' }, error: null }) },
+    })
+    await admin(request(appWith(approveDb, { [IMG]: PNG_BYTES })).post(`/api/admin/import/items/${ITEM}/approve`)).send(edits)
+    const claim = approveDb.calls.find((call) => call.table === 'import_items')
+    expect(claim.ops).toContainEqual(['eq', ['status', 'pending']])
+
+    const rejectDb = fakeSupabase({ user: adminUser, results: { import_items: { data: { id: ITEM }, error: null } } })
+    await admin(request(appWith(rejectDb)).post(`/api/admin/import/items/${ITEM}/reject`))
+    expect(rejectDb.calls.find((call) => call.table === 'import_items').ops).toContainEqual(['eq', ['status', 'pending']])
+  })
+
+  it('still answers 201 and does not requeue when linking the product fails', async () => {
+    const supabase = fakeSupabase({
+      user: adminUser,
+      results: {
+        import_items: (index) => (index === 0 ? { data: pending, error: null } : { data: null, error: { code: 'XX000', message: 'link failed' } }),
+        products: (index) => (index === 0 ? { data: [], error: null } : { data: { id: 'zinc-50mg', name: 'Zinc 50mg' }, error: null }),
+      },
+    })
+    const res = await admin(request(appWith(supabase, { [IMG]: PNG_BYTES })).post(`/api/admin/import/items/${ITEM}/approve`)).send(edits)
+    expect(res.status).toBe(201)
+    const updates = ops(supabase, 'import_items').filter(([name]) => name === 'update').map(([, args]) => args[0])
+    expect(updates).toEqual([{ status: 'approved' }, { product_id: 'zinc-50mg' }])
   })
 
   it('answers 409 when the item was already handled', async () => {
@@ -235,11 +284,32 @@ describe('hardening', () => {
     expect(supabase.calls).toHaveLength(0)
   })
 
-  it('hands a bad stored cursor to the scanner, which rejects it', async () => {
-    const supabase = fakeSupabase({ user: adminUser, results: { import_batches: { data: { ...batchRow, cursor: { kind: 'evil', url: 'http://127.0.0.1/' } }, error: null } } })
-    const res = await scan(supabase, { batchId: BATCH })
-    expect(res.status).toBeGreaterThanOrEqual(400)
-    expect(res.status).toBeLessThan(600)
-    expect(JSON.stringify(res.body)).not.toMatch(/127\.0\.0\.1\/"/)
+  it('returns a generic 500 without leaking when updating the batch fails after scanning', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const supabase = fakeSupabase({
+      user: adminUser,
+      results: {
+        import_batches: (index) => (index === 0 ? { data: batchRow, error: null } : { data: null, error: { code: 'XX000', message: 'secret batch detail' } }),
+        import_items: { data: [], error: null },
+      },
+    })
+    const res = await scan(supabase, { batchId: BATCH }, shopifyFeed)
+    spy.mockRestore()
+    expect(res.status).toBe(500)
+    expect(res.body).toEqual({ error: 'The website could not be scanned.' })
+    expect(JSON.stringify(res.body)).not.toMatch(/secret/)
+  })
+
+  it('hands a bad stored cursor to the scanner, which rejects it without contacting the cursor host', async () => {
+    const supabase = fakeSupabase({ user: adminUser, results: { import_batches: { data: { ...batchRow, cursor: { kind: 'evil', url: 'http://evil.example/' } }, error: null } } })
+    const fake = fakeFetch({})
+    const app = createApp({
+      supabase, supabaseUrl, admins: parseAdminEmails('owner@example.com'), starter: { products: [], categories: [] },
+      clientDistPath: 'dist/frontend', importFetchOpts: { fetchImpl: fake.fetchImpl, lookup: publicLookup },
+    })
+    const res = await admin(request(app).post('/api/admin/import/scan')).send({ batchId: BATCH })
+    expect(res.status).toBe(400)
+    expect(res.body.error).toBe('This scan can no longer be continued. Start a new scan.')
+    expect(fake.calls.some((call) => call.includes('evil.example'))).toBe(false)
   })
 })

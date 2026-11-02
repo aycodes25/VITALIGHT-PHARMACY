@@ -11,12 +11,19 @@ export function draftFromItem(item) {
     price: data.price ?? '',
     old_price: data.old_price ?? '',
     stock: 0,
-    images: Array.isArray(data.images) ? data.images : [],
+    images: Array.isArray(data.images) ? [...new Set(data.images)] : [],
   }
 }
 
-const isBlank = (value) => value === '' || value === null || value === undefined
-const isWhole = (value, max) => Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= max
+const isBlank = (value) => value === null || value === undefined || (typeof value === 'string' && value.trim() === '')
+// Strings must be plain digits ('1e3', '0x10', '+5' and '1.0' are not whole numbers a person typed).
+function isWhole(value, max) {
+  let number
+  if (typeof value === 'number') number = value
+  else if (typeof value === 'string' && /^\d+$/.test(value.trim())) number = Number(value.trim())
+  else return false
+  return Number.isInteger(number) && number >= 0 && number <= max
+}
 
 export function itemProblems(draft) {
   const problems = []
@@ -38,9 +45,9 @@ export function payloadFromDraft(draft) {
     brand: String(draft.brand ?? '').trim(),
     tag: String(draft.tag).trim(),
     category: draft.category,
-    price: Number(draft.price),
-    old_price: isBlank(draft.old_price) ? null : Number(draft.old_price),
-    stock: Number(draft.stock),
+    price: Number(String(draft.price).trim()),
+    old_price: isBlank(draft.old_price) ? null : Number(String(draft.old_price).trim()),
+    stock: Number(String(draft.stock).trim()),
     image_urls: draft.images,
     is_active: true,
     featured: false,

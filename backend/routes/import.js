@@ -10,6 +10,7 @@ const ALREADY_HANDLED = 'This product was already approved or rejected, or no lo
 
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 const MAX_URL_LENGTH = 2000
+const ITEM_LIMIT = 500
 
 const missingTable = (error) => error?.code === '42P01' || error?.code === 'PGRST205'
 
@@ -84,17 +85,19 @@ export function importRoutes({ supabase, supabaseUrl, auth, fetchOpts = {} }) {
     try {
       const [batchResult, itemsResult, categoriesResult, productsResult] = await Promise.all([
         supabase.from('import_batches').select('id, source_url, platform, status, created_at').eq('id', req.params.id).maybeSingle(),
-        supabase.from('import_items').select('*').eq('batch_id', req.params.id).order('created_at', { ascending: true }).limit(500),
+        supabase.from('import_items').select('*').eq('batch_id', req.params.id).order('created_at', { ascending: true }).order('id', { ascending: true }).limit(ITEM_LIMIT + 1),
         supabase.from('categories').select('name'),
-        supabase.from('products').select('id, name'),
+        supabase.from('products').select('id, name').limit(5000),
       ])
       for (const { error } of [batchResult, itemsResult, categoriesResult, productsResult]) if (error) throw error
       if (!batchResult.data) return res.status(404).json({ error: 'This scan no longer exists.' })
       const categories = categoriesResult.data ?? []
       const products = productsResult.data ?? []
+      const rows = itemsResult.data ?? []
       return res.json({
         batch: batchResult.data,
-        items: (itemsResult.data ?? []).map((row) => ({
+        truncated: rows.length > ITEM_LIMIT,
+        items: rows.slice(0, ITEM_LIMIT).map((row) => ({
           id: row.id,
           status: row.status,
           product_id: row.product_id,

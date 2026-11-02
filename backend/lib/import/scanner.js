@@ -124,7 +124,14 @@ function absorbListing(page, pagesDone, total, source) {
 
 async function startHtml(source, opts) {
   const page = await fetchText(source.href, opts)
-  if (!sameSiteUrl(page.url, source)) throw new ImportError(REDIRECT_MESSAGE, 422)
+  let finalUrl
+  try {
+    finalUrl = new URL(page.url)
+  } catch {
+    throw new ImportError(REDIRECT_MESSAGE, 422)
+  }
+  // Compare hosts directly: the stored-URL length cap must not decide whether this was a redirect.
+  if (siteKey(finalUrl) !== siteKey(source)) throw new ImportError(REDIRECT_MESSAGE, 422)
   const embedded = productsFromHtml(page.text, page.url)
   const links = findProductLinks(page.text, page.url, { limit: LIMITS.maxProducts + 1 })
   if (embedded.length === 1 && (looksLikeProductUrl(page.url) || links.length === 0)) {

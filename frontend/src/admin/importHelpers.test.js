@@ -38,6 +38,40 @@ describe('itemProblems', () => {
   })
 })
 
+describe('numeric validation', () => {
+  const base = draftFromItem(item)
+  it('treats whitespace-only values as blank', () => {
+    expect(itemProblems({ ...base, price: '   ' })).toEqual([expect.stringMatching(/price/i)])
+    expect(itemProblems({ ...base, stock: '  ' })).toEqual([expect.stringMatching(/stock/i)])
+    expect(itemProblems({ ...base, old_price: '  ' })).toEqual([])
+  })
+
+  it('refuses exponent, hex, signed and decimal strings', () => {
+    for (const bad of ['1e3', '0x10', '1.0e1', '+5', '-5', '1.0', '12.5']) {
+      expect(itemProblems({ ...base, price: bad })).toHaveLength(1)
+      expect(itemProblems({ ...base, stock: bad })).toHaveLength(1)
+      expect(itemProblems({ ...base, old_price: bad })).toHaveLength(1)
+    }
+  })
+
+  it('accepts digit strings and integer numbers', () => {
+    expect(itemProblems({ ...base, price: '12', stock: ' 3 ', old_price: '20' })).toEqual([])
+    expect(itemProblems({ ...base, price: 12, stock: 0, old_price: 20 })).toEqual([])
+  })
+
+  it('builds the payload from trimmed values', () => {
+    const body = payloadFromDraft({ ...base, price: ' 12 ', old_price: '   ', stock: ' 4' })
+    expect(body).toMatchObject({ price: 12, old_price: null, stock: 4 })
+  })
+})
+
+describe('draftFromItem images', () => {
+  it('removes duplicate image urls', () => {
+    const draft = draftFromItem({ id: 'x', data: { images: ['https://a/1.jpg', 'https://a/1.jpg', 'https://a/2.jpg'] } })
+    expect(draft.images).toEqual(['https://a/1.jpg', 'https://a/2.jpg'])
+  })
+})
+
 describe('payloadFromDraft', () => {
   it('converts form strings to the approve request body', () => {
     const body = payloadFromDraft({ ...draftFromItem(item), name: ' Paracetamol 500mg ', price: '550', old_price: '', stock: '12' })

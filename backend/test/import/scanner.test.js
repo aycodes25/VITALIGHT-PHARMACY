@@ -78,6 +78,7 @@ describe('scanStep: html pages', () => {
     })
     const start = await scanStep({ url: 'https://shop.example/shop' }, opts)
     expect(start.items).toEqual([])
+    expect(start.limitReached).toBe(false)
     expect(start.cursor).toEqual({
       mode: 'html', queue: ['https://shop.example/products/a', 'https://shop.example/products/b'],
       listingNext: 'https://shop.example/shop?page=2', pages: 1, total: 0,
@@ -188,6 +189,13 @@ describe('scanStep: hostile sites and tampered cursors', () => {
 
     const other = { fetchImpl: redirectTo('https://shop.example/shop', 'https://other.example/shop', { 'https://other.example/shop': page }), lookup: publicLookup }
     await expect(scanStep({ url: shop }, other)).rejects.toMatchObject({ status: 422, message: 'The website redirected to a different address. Paste the final address instead.' })
+  })
+
+  it('does not call a long same-site address a redirect', async () => {
+    const longUrl = `https://shop.example/products/a?ref=${'x'.repeat(600)}`
+    const opts = run({ [longUrl]: product('Item A') })
+    const step = await scanStep({ url: longUrl }, opts)
+    expect(step.items.map((item) => item.name)).toEqual(['Item A'])
   })
 
   it('drops foreign or non-http listingNext values', async () => {

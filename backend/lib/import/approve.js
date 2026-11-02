@@ -29,12 +29,15 @@ function draftFrom(edits, id) {
     is_active: edits.is_active ?? true,
     featured: edits.featured ?? false,
   }
-  if (typeof edits.brand === 'string' && edits.brand.trim()) draft.brand = edits.brand
+  if (typeof edits.brand === 'string' && edits.brand.trim()) draft.brand = edits.brand.trim()
   return draft
 }
 
 const removeUploads = (supabase, photos) => (photos.length
-  ? Promise.resolve().then(() => supabase.storage.from(BUCKET).remove(photos.map((photo) => photo.path))).catch(() => {})
+  ? Promise.resolve()
+    .then(() => supabase.storage.from(BUCKET).remove(photos.map((photo) => photo.path)))
+    .then((result) => { if (result?.error) console.error(`Import cleanup could not remove uploaded photos: ${result.error.message ?? result.error}`) })
+    .catch((error) => console.error(`Import cleanup could not remove uploaded photos: ${error?.message ?? error}`))
   : Promise.resolve())
 
 async function rehostImage(supabase, productId, url, fetchOpts) {
