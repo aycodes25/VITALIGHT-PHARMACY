@@ -71,7 +71,7 @@ export function absoluteUrl(value, base) {
 
 export function makeItem({ name, description, price, oldPrice, currency, images, sourceUrl, category, brand }) {
   const cleanName = clean(name, 120)
-  if (cleanName.length < 2) return null
+  if (cleanName.length < 1) return null
   const parsedPrice = parsePrice(price)
   const parsedOld = parsePrice(oldPrice)
   const imageUrls = [...new Set((Array.isArray(images) ? images : []).map((image) => absoluteUrl(image, sourceUrl)).filter(Boolean))].slice(0, 8)
