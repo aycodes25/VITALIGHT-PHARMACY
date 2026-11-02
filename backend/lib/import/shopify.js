@@ -13,15 +13,19 @@ export function shopifyFeedUrl(sourceUrl, page) {
 export function parseShopifyProducts(json, origin) {
   if (!json || !Array.isArray(json.products)) return null
   return json.products.map((product) => {
-    const first = Array.isArray(product.variants) ? product.variants[0] ?? {} : {}
+    if (!product || typeof product !== 'object') return null
+    if (typeof product.handle !== 'string' || !product.handle) return null
+    const variants = Array.isArray(product.variants) ? product.variants : []
+    const images = Array.isArray(product.images) ? product.images : []
+    const first = variants[0] && typeof variants[0] === 'object' ? variants[0] : {}
     return makeItem({
       name: product.title,
       description: product.body_html,
       price: first.price,
       oldPrice: first.compare_at_price,
       currency: '',
-      images: (product.images ?? []).map((image) => image?.src),
-      sourceUrl: `${origin}/products/${product.handle}`,
+      images: images.map((image) => image?.src),
+      sourceUrl: `${origin}/products/${encodeURIComponent(product.handle)}`,
       category: product.product_type,
       brand: product.vendor,
     })

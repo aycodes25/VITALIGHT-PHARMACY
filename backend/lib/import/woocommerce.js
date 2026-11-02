@@ -1,4 +1,4 @@
-import { makeItem } from './normalize.js'
+import { absoluteUrl, makeItem } from './normalize.js'
 
 export const WOO_PAGE_SIZE = 100
 
@@ -21,10 +21,10 @@ export function parseWooProducts(json, origin) {
         price: major(product.prices?.price),
         oldPrice: major(product.prices?.regular_price),
         currency: product.prices?.currency_code,
-        images: (product.images ?? []).map((image) => image?.src),
-        sourceUrl: product.permalink || origin,
-        category: product.categories?.[0]?.name,
-        brand: product.brands?.[0]?.name,
+        images: (Array.isArray(product.images) ? product.images : []).map((image) => image?.src),
+        sourceUrl: absoluteUrl(product.permalink, origin) ?? origin,
+        category: (Array.isArray(product.categories) ? product.categories[0] : null)?.name,
+        brand: (Array.isArray(product.brands) ? product.brands[0] : null)?.name,
       })
     })
     .filter(Boolean)

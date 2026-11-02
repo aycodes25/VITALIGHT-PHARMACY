@@ -16,4 +16,9 @@ describe('parsePrice', () => {
   it.each([[''], [null], [undefined], ['free'], [-5], [Number.NaN]])('returns null for %j', (input) => {
     expect(parsePrice(input)).toBeNull()
   })
+
+  it.each([['₦5,000 - ₦8,000'], ['5000 to 8000'], ['From 100 to 200'], [','], ['₦,'], ['.'], ['-5']])(
+    'returns null for range or malformed %j',
+    (input) => expect(parsePrice(input)).toBeNull(),
+  )
 })

@@ -75,3 +75,49 @@ describe('woocommerce', () => {
     expect(parseWooProducts([], 'https://shop.example')).toEqual([])
   })
 })
+
+describe('hostile data', () => {
+  it('shopify skips bad entries, tolerates non-array variants/images, skips missing handle', () => {
+    const json = { products: [
+      null, 'str', 5,
+      { title: 'No Handle', variants: [] },
+      { title: 'Odd One', handle: 'odd one', variants: {}, images: { src: 'x' } },
+      { title: 'Str Images', handle: 'si', images: 'abc' },
+      { title: 'Null Images', handle: 'ni', images: null },
+    ] }
+    const items = parseShopifyProducts(json, 'https://shop.example')
+    expect(items.map((i) => i.name)).toEqual(['Odd One', 'Str Images', 'Null Images'])
+    expect(items[0].source_url).toBe('https://shop.example/products/odd%20one')
+    expect(items.every((i) => i.images.length === 0)).toBe(true)
+  })
+
+  it('woo tolerates non-array images/categories/brands and non-http permalinks', () => {
+    const base = { prices: { price: '1000', currency_minor_unit: 2 } }
+    const items = parseWooProducts([
+      { ...base, name: 'A Product', images: { src: 'x' }, categories: { name: 'c' }, brands: 'b', permalink: 'javascript:alert(1)' },
+      { ...base, name: 'B Product', images: null, permalink: 5 },
+    ], 'https://shop.example')
+    expect(items).toHaveLength(2)
+    expect(items[0].source_url).toBe('https://shop.example')
+    expect(items[1].source_url).toBe('https://shop.example')
+    expect(items[0].images).toEqual([])
+  })
+
+  it('makeItem tolerates non-array images and non-string entries', () => {
+    for (const images of [{}, 'abc', null, 5]) {
+      expect(makeItem({ name: 'Zinc', images, sourceUrl: 'https://a.example/p' }).images).toEqual([])
+    }
+    expect(makeItem({ name: 'Zinc', images: [null, 5, {}, '/a.jpg'], sourceUrl: 'https://a.example/p' }).images)
+      .toEqual(['https://a.example/a.jpg'])
+  })
+
+  it('decodes numeric entities once', () => {
+    const name = (n) => makeItem({ name: n, sourceUrl: 'https://a.example/' }).name
+    expect(name('Men&#039;s')).toBe("Men's")
+    expect(name('A&#8211;B')).toBe('A–B')
+    expect(name('A&#38;B')).toBe('A&B')
+    expect(name('It&#x27;s')).toBe("It's")
+    expect(name('x &amp;lt; y')).toBe('x &lt; y')
+    expect(name('bad &#99999999; ok')).toBe('bad &#99999999; ok')
+  })
+})

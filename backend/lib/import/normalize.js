@@ -3,7 +3,12 @@ import { parsePrice } from './price.js'
 const ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'", '&nbsp;': ' ' }
 
 export function decodeEntities(text) {
-  return String(text ?? '').replace(/&(?:amp|lt|gt|quot|apos|nbsp|#39);/g, (match) => ENTITIES[match])
+  return String(text ?? '').replace(/&(?:amp|lt|gt|quot|apos|nbsp|#39|#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6}));/g, (match, dec, hex) => {
+    if (dec === undefined && hex === undefined) return ENTITIES[match] ?? match
+    const code = dec !== undefined ? Number.parseInt(dec, 10) : Number.parseInt(hex, 16)
+    if (!Number.isInteger(code) || code < 0 || code > 0x10ffff) return match
+    try { return String.fromCodePoint(code) } catch { return match }
+  })
 }
 
 // Plain text from possibly-HTML input: tags removed first, then entities decoded, then whitespace collapsed.
@@ -22,12 +27,12 @@ export function absoluteUrl(value, base) {
   }
 }
 
-export function makeItem({ name, description, price, oldPrice, currency, images = [], sourceUrl, category, brand }) {
+export function makeItem({ name, description, price, oldPrice, currency, images, sourceUrl, category, brand }) {
   const cleanName = clean(name, 120)
   if (cleanName.length < 2) return null
   const parsedPrice = parsePrice(price)
   const parsedOld = parsePrice(oldPrice)
-  const imageUrls = [...new Set(images.map((image) => absoluteUrl(image, sourceUrl)).filter(Boolean))].slice(0, 8)
+  const imageUrls = [...new Set((Array.isArray(images) ? images : []).map((image) => absoluteUrl(image, sourceUrl)).filter(Boolean))].slice(0, 8)
   return {
     name: cleanName,
     description: clean(description, 240),
