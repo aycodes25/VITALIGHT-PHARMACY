@@ -1,6 +1,7 @@
 import { parsePrice } from './price.js'
 
 export const MAX_HTML = 5_000_000
+const MAX_IMAGE_URL = 2000
 
 // Bounded string view of scraped HTML; anything that is not a string becomes ''.
 export const text = (html) => (typeof html === 'string' ? html.slice(0, MAX_HTML) : '')
@@ -74,7 +75,7 @@ export function makeItem({ name, description, price, oldPrice, currency, images,
   if (cleanName.length < 2) return null
   const parsedPrice = parsePrice(price)
   const parsedOld = parsePrice(oldPrice)
-  const imageUrls = [...new Set((Array.isArray(images) ? images : []).map((image) => absoluteUrl(image, sourceUrl)).filter(Boolean))].slice(0, 8)
+  const imageUrls = [...new Set((Array.isArray(images) ? images : []).map((image) => absoluteUrl(image, sourceUrl)).filter((image) => image && image.length <= MAX_IMAGE_URL))].slice(0, 8)
   return {
     name: cleanName,
     description: clean(description, 240),

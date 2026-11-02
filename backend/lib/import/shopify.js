@@ -1,11 +1,19 @@
 import { makeItem } from './normalize.js'
+import { looksLikeProductUrl } from './links.js'
 
-export const SHOPIFY_PAGE_SIZE = 250
+export const SHOPIFY_PAGE_SIZE = 50
 
+// Optional locale prefix such as /en or /en-ng.
+const LOCALE_COLLECTION = /^(\/[a-z]{2}(?:-[a-z]{2,4})?)?\/collections\/([^/]+)/i
+
+// The feed that matches the pasted address, or null when the address is a single product
+// (the page itself is then read instead). A collection maps to its own feed; any other
+// address reads the whole shop.
 export function shopifyFeedUrl(sourceUrl, page) {
   const url = new URL(sourceUrl)
-  const collection = url.pathname.match(/^\/collections\/([^/]+)/)
-  const feedPath = collection ? `/collections/${collection[1]}/products.json` : '/products.json'
+  if (looksLikeProductUrl(url.href)) return null
+  const collection = url.pathname.match(LOCALE_COLLECTION)
+  const feedPath = collection ? `${collection[1] ?? ''}/collections/${collection[2]}/products.json` : '/products.json'
   return `${url.origin}${feedPath}?limit=${SHOPIFY_PAGE_SIZE}&page=${page}`
 }
 

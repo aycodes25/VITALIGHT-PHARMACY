@@ -78,7 +78,7 @@ The `npm run images` CLI is safe to re-run: photos are stored under a name deriv
 The admin has an **AI Import** page: paste a shop or category URL from a site you have permission to use (for example a supplier), review the products it finds, and approve, edit or reject each one. Approved products are saved like any other product (photos are copied into your own `product-images` storage) and appear in the admin and on the storefront.
 
 - It reads sites that publish structured product data: Shopify and WooCommerce stores, and pages with schema.org `Product` markup or OpenGraph product tags. It does not use an AI service, so there is no API cost. If a site exposes nothing readable, the page says so.
-- One scan covers up to 20 listing pages and 200 products. Scan a narrower category page to import more.
+- One scan covers up to 20 listing pages and 200 products. Paste a narrower address (a WooCommerce product-category page or a Shopify collection) to scan just that category and import more.
 - Prices are assumed to be in naira; new products start with stock 0 so set the stock before approving.
 - Apply `supabase/migrations/005_import_queue.sql` in the Supabase SQL editor before using it. Until then the page shows a message asking you to apply it.
 - Apply order for a database that has never had the base schema: `supabase/schema.sql`, then migrations 001, (002 optional), 003, 004, then 005. `005_import_queue.sql` references `public.products`, so it fails with `relation "public.products" does not exist` if the base schema is missing.

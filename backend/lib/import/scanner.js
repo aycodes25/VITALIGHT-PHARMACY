@@ -6,10 +6,11 @@ import { extractJsonLdProducts } from './jsonld.js'
 import { extractMetaProduct } from './meta.js'
 import { findNextPageUrl, findProductLinks, looksLikeProductUrl } from './links.js'
 
-export const LIMITS = { maxProducts: 200, maxListingPages: 20, productFetchesPerStep: 5 }
+export const LIMITS = { maxProducts: 200, maxListingPages: 20, productFetchesPerStep: 3 }
 export const NO_DATA_MESSAGE = 'This site does not expose product data that can be read automatically. Try a shop or category page, or add the products manually.'
 const STALE_MESSAGE = 'This scan can no longer be continued. Start a new scan.'
 const MAX_URL_LENGTH = 512
+const FEED_MAX_BYTES = 5 * 1024 * 1024
 const REDIRECT_MESSAGE = 'The website redirected to a different address. Paste the final address instead.'
 
 const FEEDS = {
@@ -76,7 +77,13 @@ const staleScan = () => new ImportError(STALE_MESSAGE, 400)
 
 async function readFeed(mode, source, page, opts) {
   const feed = FEEDS[mode]
-  const json = await fetchJson(feed.feedUrl(source.href, page), opts).catch(() => null)
+  const feedUrl = feed.feedUrl(source.href, page)
+  if (!feedUrl) return { items: null, count: 0, pageSize: feed.pageSize }
+  const json = await fetchJson(feedUrl, { ...opts, maxBytes: FEED_MAX_BYTES }).catch((error) => {
+    // The feed is optional: fall back to reading the page, but leave a trace when it was only too big.
+    if (error instanceof ImportError && /too large/i.test(error.message)) console.warn(`Import: ${mode} feed is too large to read; falling back to the page.`)
+    return null
+  })
   const items = json ? feed.parse(json, source.origin) : null
   return { items: Array.isArray(items) ? items : null, count: items ? rawCount(json) : 0, pageSize: feed.pageSize }
 }

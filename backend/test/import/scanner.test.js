@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { LIMITS, scanStep } from '../../lib/import/scanner.js'
 import { ImportError } from '../../lib/import/urlSafety.js'
 import { fakeFetch, publicLookup } from '../helpers/fakeFetch.js'
@@ -16,7 +16,7 @@ const wooRaw = (count, offset = 0) => Array.from({ length: count }, (_, i) => ({
 
 describe('scanStep: feeds', () => {
   it('reads a Shopify feed in one step', async () => {
-    const opts = run({ 'https://shop.example/products.json?limit=250&page=1': { products: [
+    const opts = run({ 'https://shop.example/products.json?limit=50&page=1': { products: [
       { title: 'Item A', handle: 'a', variants: [{ price: '100' }], images: [] },
       { title: 'Item B', handle: 'b', variants: [{ price: '200' }], images: [] },
     ] } })
@@ -27,24 +27,92 @@ describe('scanStep: feeds', () => {
     expect(step.limitReached).toBe(false)
   })
 
-  it('caps a large Shopify feed at the product limit', async () => {
+  it('pages a large Shopify feed and stops at the product limit after four pages', async () => {
+    const page = (n) => ({ products: Array.from({ length: 50 }, (_, i) => ({ title: `P${n}-${i}`, handle: `p${n}-${i}`, variants: [{ price: '1' }], images: [] })) })
+    const routes = {}
+    for (let n = 1; n <= 5; n += 1) routes[`https://shop.example/products.json?limit=50&page=${n}`] = page(n)
+    const opts = run(routes)
+    let step = await scanStep({ url: 'https://shop.example/' }, opts)
+    const seen = [step]
+    while (step.cursor) {
+      expect(step.cursor).toEqual({ mode: 'shopify', page: seen.length + 1, total: seen.length * 50 })
+      step = await scanStep({ url: 'https://shop.example/', cursor: step.cursor }, opts)
+      seen.push(step)
+    }
+    expect(seen).toHaveLength(4)
+    expect(seen.flatMap((s) => s.items)).toHaveLength(LIMITS.maxProducts)
+    expect(seen.slice(0, 3).every((s) => !s.limitReached)).toBe(true)
+    expect(step.limitReached).toBe(true)
+    expect(step.cursor).toBeNull()
+  })
+
+  it('trims an oversized feed page to the product limit', async () => {
     const products = Array.from({ length: 250 }, (_, i) => ({ title: `P${i}`, handle: `p${i}`, variants: [{ price: '1' }], images: [] }))
-    const opts = run({ 'https://shop.example/products.json?limit=250&page=1': { products } })
+    const opts = run({ 'https://shop.example/products.json?limit=50&page=1': { products } })
     const step = await scanStep({ url: 'https://shop.example/' }, opts)
     expect(step.items).toHaveLength(LIMITS.maxProducts)
     expect(step.cursor).toBeNull()
     expect(step.limitReached).toBe(true)
   })
 
+  it('does not read the feed for a single Shopify product page and uses its JSON-LD', async () => {
+    const { fetchImpl, calls } = fakeFetch({
+      'https://shop.example/products/omega-3': `<html>${product('Omega 3', 9500)}</html>`,
+      'https://shop.example/products.json?limit=50&page=1': { products: [{ title: 'Other', handle: 'o', variants: [], images: [] }] },
+    })
+    const step = await scanStep({ url: 'https://shop.example/products/omega-3' }, { fetchImpl, lookup: publicLookup })
+    expect(calls.some((c) => c.includes('products.json'))).toBe(false)
+    expect(step.items.map((item) => item.name)).toEqual(['Omega 3'])
+  })
+
+  it('builds a locale-prefixed collection feed under the same prefix', async () => {
+    const { fetchImpl, calls } = fakeFetch({
+      'https://shop.example/en-ng/collections/vitamins/products.json?limit=50&page=1': { products: [{ title: 'Item A', handle: 'a', variants: [{ price: '1' }], images: [] }] },
+    })
+    const step = await scanStep({ url: 'https://shop.example/en-ng/collections/vitamins' }, { fetchImpl, lookup: publicLookup })
+    expect(calls).toEqual(['https://shop.example/en-ng/collections/vitamins/products.json?limit=50&page=1'])
+    expect(step.platform).toBe('shopify')
+  })
+
+  it('requests the WooCommerce feed with the category slug for a category page', async () => {
+    const { fetchImpl, calls } = fakeFetch({
+      'https://shop.example/wp-json/wc/store/v1/products?per_page=50&page=1&category=vitamins': wooRaw(2),
+    })
+    const step = await scanStep({ url: 'https://shop.example/product-category/vitamins/' }, { fetchImpl, lookup: publicLookup })
+    expect(calls.filter((c) => c.includes('wc/store'))).toEqual(['https://shop.example/wp-json/wc/store/v1/products?per_page=50&page=1&category=vitamins'])
+    expect(step.platform).toBe('woocommerce')
+    expect(step.items).toHaveLength(2)
+  })
+
+  it('does not request the WooCommerce feed for a single product page', async () => {
+    const { fetchImpl, calls } = fakeFetch({ 'https://shop.example/product/zinc': `<html>${product('Zinc', 500)}</html>` })
+    const step = await scanStep({ url: 'https://shop.example/product/zinc' }, { fetchImpl, lookup: publicLookup })
+    expect(calls.some((c) => c.includes('wp-json'))).toBe(false)
+    expect(step.items.map((item) => item.name)).toEqual(['Zinc'])
+  })
+
+  it('falls back to the page (with a warning) when a feed is too large to read', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const opts = run({
+      'https://shop.example/products.json?limit=50&page=1': { body: 'x'.repeat(5 * 1024 * 1024 + 1), contentType: 'application/json' },
+      'https://shop.example/': `<html>${product('Single', 100)}</html>`,
+    })
+    const step = await scanStep({ url: 'https://shop.example/' }, opts)
+    expect(step.platform).toBe('page')
+    expect(step.items.map((item) => item.name)).toEqual(['Single'])
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/too large/))
+    warn.mockRestore()
+  })
+
   it('pages through the WooCommerce store api', async () => {
     const opts = run({
-      'https://shop.example/wp-json/wc/store/v1/products?per_page=100&page=1': wooRaw(100),
-      'https://shop.example/wp-json/wc/store/v1/products?per_page=100&page=2': wooRaw(30, 100),
+      'https://shop.example/wp-json/wc/store/v1/products?per_page=50&page=1': wooRaw(50),
+      'https://shop.example/wp-json/wc/store/v1/products?per_page=50&page=2': wooRaw(30, 50),
     })
     const first = await scanStep({ url: 'https://shop.example/' }, opts)
     expect(first.platform).toBe('woocommerce')
-    expect(first.items).toHaveLength(100)
-    expect(first.cursor).toEqual({ mode: 'woocommerce', page: 2, total: 100 })
+    expect(first.items).toHaveLength(50)
+    expect(first.cursor).toEqual({ mode: 'woocommerce', page: 2, total: 50 })
 
     const second = await scanStep({ url: 'https://shop.example/', cursor: first.cursor }, opts)
     expect(second.items).toHaveLength(30)
@@ -258,7 +326,7 @@ describe('scanStep: hostile sites and tampered cursors', () => {
 
   it('terminates when a feed answers every page with a full page of products', async () => {
     const routes = {}
-    for (let i = 1; i <= 60; i += 1) routes[`https://shop.example/wp-json/wc/store/v1/products?per_page=100&page=${i}`] = wooRaw(100, 0)
+    for (let i = 1; i <= 60; i += 1) routes[`https://shop.example/wp-json/wc/store/v1/products?per_page=50&page=${i}`] = wooRaw(50, 0)
     const opts = run(routes)
     let cursor = null
     let steps = 0
@@ -272,19 +340,32 @@ describe('scanStep: hostile sites and tampered cursors', () => {
   })
 
   it('tolerates feeds that return non-object entries or the wrong shape', async () => {
-    const shopify = run({ 'https://shop.example/products.json?limit=250&page=1': { products: [null, 1, 'x', [], { handle: 'ok', title: 'Ok', variants: 'bad', images: 7 }] } })
+    const shopify = run({ 'https://shop.example/products.json?limit=50&page=1': { products: [null, 1, 'x', [], { handle: 'ok', title: 'Ok', variants: 'bad', images: 7 }] } })
     const step = await scanStep({ url: 'https://shop.example/' }, shopify)
     expect(step.items.map((item) => item.name)).toEqual(['Ok'])
 
-    const woo = run({ 'https://shop.example/wp-json/wc/store/v1/products?per_page=100&page=1': [null, 1, 'x', { prices: null, name: 'Wo' }] })
+    const woo = run({ 'https://shop.example/wp-json/wc/store/v1/products?per_page=50&page=1': [null, 1, 'x', { prices: null, name: 'Wo' }] })
     const wooStep = await scanStep({ url: 'https://shop.example/' }, woo)
     expect(wooStep.items.map((item) => item.name)).toEqual(['Wo'])
-    const odd = run({ 'https://shop.example/products.json?limit=250&page=1': { products: 'nope' }, 'https://shop.example/': '<p>hi</p>' })
+    const odd = run({ 'https://shop.example/products.json?limit=50&page=1': { products: 'nope' }, 'https://shop.example/': '<p>hi</p>' })
     await expect(scanStep({ url: 'https://shop.example/' }, odd)).rejects.toMatchObject({ status: 422 })
   })
 
   it('rejects an unparseable source url as an ImportError', async () => {
     await expect(scanStep({ url: 'not a url' }, run({}))).rejects.toBeInstanceOf(ImportError)
+  })
+})
+
+describe('scanStep: product page concurrency', () => {
+  it('fetches at most three product pages per step', async () => {
+    const urls = Array.from({ length: 5 }, (_, i) => `https://shop.example/products/p${i}`)
+    const { fetchImpl, calls } = fakeFetch(Object.fromEntries(urls.map((u, i) => [u, product(`Item ${i}`)])))
+    const cursor = { mode: 'html', queue: urls, listingNext: null, pages: 1, total: 0 }
+    const step = await scanStep({ url: 'https://shop.example/shop', cursor }, { fetchImpl, lookup: publicLookup })
+    expect(LIMITS.productFetchesPerStep).toBe(3)
+    expect(calls).toHaveLength(3)
+    expect(step.items).toHaveLength(3)
+    expect(step.cursor.queue).toEqual(urls.slice(3))
   })
 })
 

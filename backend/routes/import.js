@@ -11,6 +11,7 @@ const ALREADY_HANDLED = 'This product was already approved or rejected, or no lo
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 const MAX_URL_LENGTH = 2000
 const ITEM_LIMIT = 500
+const STALE_CLAIM_MS = 5 * 60 * 1000
 
 const missingTable = (error) => error?.code === '42P01' || error?.code === 'PGRST205'
 
@@ -51,15 +52,30 @@ export function importRoutes({ supabase, supabaseUrl, auth, fetchOpts = {} }) {
       }
 
       const step = await scanStep({ url: batch.source_url, cursor: batch.cursor ?? null }, fetchOpts)
+      // The same product can show up on several listing pages: keep only the first copy in a batch.
+      let fresh = []
       if (step.items.length) {
-        const { error } = await supabase.from('import_items').insert(step.items.map((data) => ({ batch_id: batch.id, data })))
-        if (error) throw error
+        const { data: existing, error: existingError } = await supabase.from('import_items')
+          .select('data')
+          .eq('batch_id', batch.id)
+          .limit(ITEM_LIMIT)
+        if (existingError) throw existingError
+        const seen = new Set((Array.isArray(existing) ? existing : []).map((row) => row?.data?.source_url).filter(Boolean))
+        fresh = step.items.filter((data) => {
+          if (data.source_url && seen.has(data.source_url)) return false
+          if (data.source_url) seen.add(data.source_url)
+          return true
+        })
+        if (fresh.length) {
+          const { error } = await supabase.from('import_items').insert(fresh.map((data) => ({ batch_id: batch.id, data })))
+          if (error) throw error
+        }
       }
       const { error: updateError } = await supabase.from('import_batches')
         .update({ platform: step.platform, cursor: step.cursor, status: step.cursor ? 'scanning' : 'ready' })
         .eq('id', batch.id)
       if (updateError) throw updateError
-      return res.json({ batchId: batch.id, added: step.items.length, done: !step.cursor, platform: step.platform, limitReached: step.limitReached })
+      return res.json({ batchId: batch.id, added: fresh.length, done: !step.cursor, platform: step.platform, limitReached: step.limitReached })
     } catch (error) {
       // Items cascade with the batch, so a failed first step leaves nothing half-created.
       if (createdBatchId) await Promise.resolve(supabase.from('import_batches').delete().eq('id', createdBatchId)).catch(() => {})
@@ -119,9 +135,10 @@ export function importRoutes({ supabase, supabaseUrl, auth, fetchOpts = {} }) {
     try {
       // Claim first so a double click cannot create the product twice.
       const { data: item, error } = await supabase.from('import_items')
-        .update({ status: 'approved' })
+        .update({ status: 'approved', claimed_at: new Date().toISOString() })
         .eq('id', id)
-        .eq('status', 'pending')
+        // Pending, or an earlier claim that never produced a product (e.g. the request was cut off) and has gone stale.
+        .or(`status.eq.pending,and(status.eq.approved,product_id.is.null,claimed_at.lt.${new Date(Date.now() - STALE_CLAIM_MS).toISOString()})`)
         .select('*')
         .maybeSingle()
       if (error) throw error

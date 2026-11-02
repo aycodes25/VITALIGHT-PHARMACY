@@ -148,7 +148,7 @@ describe('ImportPage', () => {
 
   it('approves all valid products only after the owner confirms, and mentions flagged duplicates', async () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    const { authRequest } = await scanTwo({
+    const { authRequest, onProductsChanged } = await scanTwo({
       '/api/admin/import/items/i1/approve': () => ({ product: { id: 'a' }, warnings: [] }),
       '/api/admin/import/items/i2/approve': () => ({ product: { id: 'b' }, warnings: [] }),
     })
@@ -161,6 +161,7 @@ describe('ImportPage', () => {
     confirm.mockReturnValue(true)
     fireEvent.click(screen.getByRole('button', { name: 'Approve all valid' }))
     await waitFor(() => expect(screen.getByTestId('import-approved').textContent).toBe('2'))
+    expect(onProductsChanged).toHaveBeenCalledTimes(1)
     confirm.mockRestore()
   })
 

@@ -19,6 +19,8 @@ create table if not exists public.import_items (
   created_at timestamptz not null default now()
 );
 
+alter table public.import_items add column if not exists claimed_at timestamptz;
+
 create index if not exists import_items_batch_idx on public.import_items (batch_id, created_at);
 
 alter table public.import_batches enable row level security;

@@ -7,7 +7,7 @@ Let an admin paste a shop/category URL of another website, scan it for products 
 
 ## Decisions
 - **Extraction:** rule-based scraping only (no API cost). Order: Shopify `/products.json` → WooCommerce Store API → JSON-LD `Product` → OpenGraph/meta. If none yield products, report "no readable product data" — never guess.
-- **Scope:** one pasted URL, following pagination/product links up to ~20 pages or 200 products; polite delay between requests. No whole-site crawl.
+- **Scope:** one pasted URL, following pagination/product links up to ~20 pages or 200 products; fetches at most 3 pages at a time. No whole-site crawl.
 - **Images:** downloaded and re-hosted in our Supabase storage at approval time (type + size checked). Review screen previews the source URLs.
 - **Categories:** reviewer picks per product from a dropdown pre-filled by best-guess matching to existing categories; can add a new category from the screen. Source categories are never auto-created.
 - **Currency:** assume naira (₦); show parsed currency so the reviewer can correct.

@@ -34,7 +34,31 @@ describe('import routes: access', () => {
 })
 
 describe('POST /scan', () => {
-  const shopifyFeed = { 'https://shop.example/products.json?limit=250&page=1': { products: [{ title: 'Zinc', handle: 'zinc', variants: [{ price: '500' }], images: [] }] } }
+  const shopifyFeed = { 'https://shop.example/products.json?limit=50&page=1': { products: [{ title: 'Zinc', handle: 'zinc', variants: [{ price: '500' }], images: [] }] } }
+
+  it('skips items already in the batch and counts only inserted ones', async () => {
+    const feed = { 'https://shop.example/products.json?limit=50&page=1': { products: [
+      { title: 'Zinc', handle: 'zinc', variants: [{ price: '500' }], images: [] },
+      { title: 'Zinc again', handle: 'zinc', variants: [{ price: '500' }], images: [] },
+      { title: 'Iron', handle: 'iron', variants: [{ price: '700' }], images: [] },
+      { title: 'Omega', handle: 'omega', variants: [{ price: '900' }], images: [] },
+    ] } }
+    const existing = [{ data: { source_url: 'https://shop.example/products/iron' } }]
+    const supabase = fakeSupabase({ user: adminUser, results: { import_batches: { data: batchRow, error: null }, import_items: (index) => (index === 0 ? { data: existing, error: null } : { data: [], error: null }) } })
+    const res = await admin(request(appWith(supabase, feed)).post('/api/admin/import/scan')).send({ url: 'https://shop.example/' })
+    expect(res.status).toBe(200)
+    expect(res.body.added).toBe(2)
+    const inserted = ops(supabase, 'import_items').find(([name]) => name === 'insert')[1][0]
+    expect(inserted.map((row) => row.data.source_url)).toEqual(['https://shop.example/products/zinc', 'https://shop.example/products/omega'])
+  })
+
+  it('does not insert when every scanned item is already in the batch', async () => {
+    const existing = [{ data: { source_url: 'https://shop.example/products/zinc' } }]
+    const supabase = fakeSupabase({ user: adminUser, results: { import_batches: { data: batchRow, error: null }, import_items: { data: existing, error: null } } })
+    const res = await admin(request(appWith(supabase, shopifyFeed)).post('/api/admin/import/scan')).send({ url: 'https://shop.example/' })
+    expect(res.body).toMatchObject({ added: 0, done: true })
+    expect(ops(supabase, 'import_items').some(([name]) => name === 'insert')).toBe(false)
+  })
 
   it('creates a batch, stores the scanned items and finishes', async () => {
     const supabase = fakeSupabase({ user: adminUser, results: { import_batches: { data: batchRow, error: null }, import_items: { data: [], error: null } } })
@@ -158,7 +182,7 @@ describe('POST /items/:id/approve and /reject', () => {
     expect(res.body.product.id).toBe('zinc-50mg')
     expect(supabase.uploads).toHaveLength(1)
     const updates = ops(supabase, 'import_items').filter(([name]) => name === 'update').map(([, args]) => args[0])
-    expect(updates).toEqual([{ status: 'approved' }, { product_id: 'zinc-50mg' }])
+    expect(updates).toEqual([{ status: 'approved', claimed_at: expect.any(String) }, { product_id: 'zinc-50mg' }])
   })
 
   it('puts the item back in the queue when saving fails', async () => {
@@ -166,7 +190,7 @@ describe('POST /items/:id/approve and /reject', () => {
     const res = await admin(request(appWith(supabase)).post(`/api/admin/import/items/${ITEM}/approve`)).send({ ...edits, category: '' })
     expect(res.status).toBe(400)
     const updates = ops(supabase, 'import_items').filter(([name]) => name === 'update').map(([, args]) => args[0])
-    expect(updates).toEqual([{ status: 'approved' }, { status: 'pending' }])
+    expect(updates).toEqual([{ status: 'approved', claimed_at: expect.any(String) }, { status: 'pending' }])
   })
 
   it('guards the approve claim and the reject update with a pending status check', async () => {
@@ -176,11 +200,39 @@ describe('POST /items/:id/approve and /reject', () => {
     })
     await admin(request(appWith(approveDb, { [IMG]: PNG_BYTES })).post(`/api/admin/import/items/${ITEM}/approve`)).send(edits)
     const claim = approveDb.calls.find((call) => call.table === 'import_items')
-    expect(claim.ops).toContainEqual(['eq', ['status', 'pending']])
+    const orFilter = claim.ops.find(([name]) => name === 'or')[1][0]
+    expect(orFilter).toMatch(/^status\.eq\.pending,and\(status\.eq\.approved,product_id\.is\.null,claimed_at\.lt\.\d{4}-/)
+    expect(claim.ops.find(([name]) => name === 'update')[1][0]).toMatchObject({ status: 'approved', claimed_at: expect.any(String) })
 
     const rejectDb = fakeSupabase({ user: adminUser, results: { import_items: { data: { id: ITEM }, error: null } } })
     await admin(request(appWith(rejectDb)).post(`/api/admin/import/items/${ITEM}/reject`))
     expect(rejectDb.calls.find((call) => call.table === 'import_items').ops).toContainEqual(['eq', ['status', 'pending']])
+  })
+
+  it('lets a stale claim (approved over five minutes ago, no product) be claimed again', async () => {
+    const now = new Date('2026-11-02T12:00:00.000Z')
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(now)
+    try {
+      const supabase = fakeSupabase({
+        user: adminUser,
+        results: { import_items: { data: pending, error: null }, products: (index) => (index === 0 ? { data: [], error: null } : { data: { id: 'zinc-50mg' }, error: null }) },
+      })
+      const res = await admin(request(appWith(supabase, { [IMG]: PNG_BYTES })).post(`/api/admin/import/items/${ITEM}/approve`)).send(edits)
+      expect(res.status).toBe(201)
+      const claim = supabase.calls.find((call) => call.table === 'import_items')
+      expect(claim.ops.find(([name]) => name === 'or')[1][0]).toContain(`claimed_at.lt.${new Date(now.getTime() - 5 * 60 * 1000).toISOString()}`)
+      expect(claim.ops.find(([name]) => name === 'update')[1][0]).toEqual({ status: 'approved', claimed_at: now.toISOString() })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('answers 409 for a fresh in-flight claim (the guarded update matches no row)', async () => {
+    const supabase = fakeSupabase({ user: adminUser, results: { import_items: { data: null, error: null } } })
+    const res = await admin(request(appWith(supabase)).post(`/api/admin/import/items/${ITEM}/approve`)).send(edits)
+    expect(res.status).toBe(409)
+    expect(ops(supabase, 'products')).toEqual([])
   })
 
   it('still answers 201 and does not requeue when linking the product fails', async () => {
@@ -194,7 +246,7 @@ describe('POST /items/:id/approve and /reject', () => {
     const res = await admin(request(appWith(supabase, { [IMG]: PNG_BYTES })).post(`/api/admin/import/items/${ITEM}/approve`)).send(edits)
     expect(res.status).toBe(201)
     const updates = ops(supabase, 'import_items').filter(([name]) => name === 'update').map(([, args]) => args[0])
-    expect(updates).toEqual([{ status: 'approved' }, { product_id: 'zinc-50mg' }])
+    expect(updates).toEqual([{ status: 'approved', claimed_at: expect.any(String) }, { product_id: 'zinc-50mg' }])
   })
 
   it('answers 409 when the item was already handled', async () => {
@@ -222,7 +274,7 @@ describe('POST /items/:id/approve and /reject', () => {
 })
 
 describe('hardening', () => {
-  const shopifyFeed = { 'https://shop.example/products.json?limit=250&page=1': { products: [{ title: 'Zinc', handle: 'zinc', variants: [{ price: '500' }], images: [] }] } }
+  const shopifyFeed = { 'https://shop.example/products.json?limit=50&page=1': { products: [{ title: 'Zinc', handle: 'zinc', variants: [{ price: '500' }], images: [] }] } }
   const scan = (supabase, body, routes = {}) => admin(request(appWith(supabase, routes)).post('/api/admin/import/scan')).send(body)
 
   it('rejects a url longer than 2000 characters before touching the database', async () => {
@@ -272,7 +324,7 @@ describe('hardening', () => {
     expect(res.status).toBe(500)
     expect(JSON.stringify(res.body)).not.toMatch(/secret/)
     const updates = ops(supabase, 'import_items').filter(([name]) => name === 'update').map(([, args]) => args[0])
-    expect(updates).toEqual([{ status: 'approved' }, { status: 'pending' }])
+    expect(updates).toEqual([{ status: 'approved', claimed_at: expect.any(String) }, { status: 'pending' }])
   })
 
   it('answers 400 for a non-object approve body without claiming the item', async () => {

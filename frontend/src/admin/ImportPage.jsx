@@ -150,13 +150,13 @@ export default function ImportPage({ authRequest, categories, onProductsChanged,
   const mark = (id, status) => setItems((current) => current.map((item) => (item.id === id ? { ...item, status } : item)))
 
   // The single-item actions. They do not touch the busy flags, so a bulk run keeps the page locked for its whole length.
-  async function approveCore(item) {
+  async function approveCore(item, { refresh = true } = {}) {
     fail('')
     try {
       const result = await authRequest(`${base}/items/${item.id}/approve`, { method: 'POST', body: JSON.stringify(payloadFromDraft(drafts[item.id])) })
       mark(item.id, 'approved')
       note(result.warnings?.length ? `“${drafts[item.id].name}” was saved. ${result.warnings.join(' ')}` : `“${drafts[item.id].name}” was added to your products.`)
-      onProductsChanged()
+      if (refresh) onProductsChanged()
       return true
     } catch (approveError) {
       fail(approveError.message)
@@ -200,8 +200,15 @@ export default function ImportPage({ authRequest, categories, onProductsChanged,
     if (!window.confirm(`Approve ${targets.length} product${targets.length === 1 ? '' : 's'} and add them to your store?${warning}`)) return
     // A failed item stops the run; its error is already shown.
     await locked(async () => {
-      for (const item of targets) {
-        if (!mounted.current || !(await approveCore(item))) break
+      let approved = 0
+      try {
+        for (const item of targets) {
+          if (!mounted.current || !(await approveCore(item, { refresh: false }))) break
+          approved += 1
+        }
+      } finally {
+        // Refresh the product list once for the whole run, including a run that stopped part-way.
+        if (approved) onProductsChanged()
       }
     })
   }

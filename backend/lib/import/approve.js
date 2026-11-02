@@ -8,6 +8,7 @@ import { slugify, uniqueSlug } from './match.js'
 
 const MAX_PHOTOS = 8
 const BUCKET = 'product-images'
+const DEFAULT_DEADLINE_MS = 20000
 
 const text = (value) => (typeof value === 'string' ? value : value === undefined || value === null ? '' : null)
 
@@ -41,7 +42,7 @@ const removeUploads = (supabase, photos) => (photos.length
   : Promise.resolve())
 
 async function rehostImage(supabase, productId, url, fetchOpts) {
-  const { body } = await safeFetch(url, { ...fetchOpts, maxBytes: MAX_IMAGE_BYTES, accept: 'image/*', timeoutMs: 10000 })
+  const { body } = await safeFetch(url, { ...fetchOpts, maxBytes: MAX_IMAGE_BYTES, accept: 'image/webp,image/png,image/jpeg', timeoutMs: 10000 })
   const type = detectImageType(body)
   if (!type) throw new ImportError('not a JPEG, PNG or WebP image', 502)
   const path = `${productId}/${randomUUID()}.${type.extension}`
@@ -57,7 +58,7 @@ async function rehostImage(supabase, productId, url, fetchOpts) {
 
 // Saves a reviewed item as a real product: picks a free id, re-hosts the chosen photos, inserts the product.
 // Only image URLs found by the scan (item.data.images) can be selected. A photo that fails is skipped with a warning.
-export async function approveItem({ supabase, supabaseUrl, item, edits, fetchOpts }) {
+export async function approveItem({ supabase, supabaseUrl, item, edits, fetchOpts, deadlineMs = DEFAULT_DEADLINE_MS }) {
   if (!edits || typeof edits !== 'object' || Array.isArray(edits)) {
     throw new ImportError('Send the product details to approve.', 400)
   }
@@ -82,15 +83,35 @@ export async function approveItem({ supabase, supabaseUrl, item, edits, fetchOpt
     }
   }
   const warnings = []
-  const results = await Promise.all(wanted.map(async (url) => {
+  // One shared deadline for every photo: a slow site must not keep the request (and the claim) open.
+  let expired = false
+  let timer
+  const deadline = new Promise((resolve) => { timer = setTimeout(() => { expired = true; resolve('deadline') }, deadlineMs) })
+  const rehostOne = async (url) => {
     try {
-      return await rehostImage(supabase, id, url, fetchOpts)
+      const photo = await rehostImage(supabase, id, url, fetchOpts)
+      if (expired) {
+        await removeUploads(supabase, [photo])
+        return null
+      }
+      return photo
     } catch (error) {
-      const reason = error instanceof ImportError ? error.message : 'upload failed'
-      warnings.push(`A photo could not be copied (${url}): ${reason}`)
+      if (!expired) {
+        const reason = error instanceof ImportError ? error.message : 'upload failed'
+        warnings.push(`A photo could not be copied (${url}): ${reason}`)
+      }
       return null
     }
+  }
+  const results = await Promise.all(wanted.map(async (url) => {
+    const outcome = await Promise.race([rehostOne(url), deadline])
+    if (outcome === 'deadline') {
+      warnings.push(`A photo could not be copied (${url}): the website took too long`)
+      return null
+    }
+    return outcome
   }))
+  clearTimeout(timer)
   const uploaded = results.filter(Boolean)
 
   try {

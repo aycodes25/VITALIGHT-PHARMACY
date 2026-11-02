@@ -205,4 +205,22 @@ describe('approveItem hardening', () => {
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('storage down'))
     spy.mockRestore()
   })
+
+  it('still saves the product with a warning when a photo download never finishes', async () => {
+    const { supabase } = setup()
+    const fetchOpts = { fetchImpl: () => new Promise(() => {}), lookup: publicLookup }
+    const result = await approveItem({ supabase, supabaseUrl, item, edits, fetchOpts, deadlineMs: 30 })
+    expect(result.warnings).toHaveLength(1)
+    expect(result.warnings[0]).toMatch(/took too long/)
+    expect(inserted(supabase).images).toEqual([])
+    expect(supabase.uploads).toHaveLength(0)
+  })
+
+  it('asks for image types in the Accept header', async () => {
+    const { supabase } = setup()
+    const seen = []
+    const fetchOpts = { fetchImpl: async (url, init) => { seen.push(init.headers.Accept); return new Response(PNG_BYTES, { status: 200, headers: { 'content-type': 'image/png' } }) }, lookup: publicLookup }
+    await approveItem({ supabase, supabaseUrl, item, edits, fetchOpts })
+    expect(seen).toEqual(['image/webp,image/png,image/jpeg'])
+  })
 })

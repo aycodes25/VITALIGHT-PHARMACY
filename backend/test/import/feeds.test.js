@@ -12,11 +12,25 @@ describe('makeItem', () => {
   })
 })
 
+describe('makeItem image urls', () => {
+  it('drops image urls longer than 2000 characters', () => {
+    const item = makeItem({ name: 'Zinc', images: [`https://a.example/${'x'.repeat(2000)}.jpg`, 'https://a.example/ok.jpg'], sourceUrl: 'https://a.example/p' })
+    expect(item.images).toEqual(['https://a.example/ok.jpg'])
+  })
+})
+
 describe('shopify', () => {
   it('builds feed urls for the whole shop and for a collection', () => {
-    expect(shopifyFeedUrl('https://shop.example/', 2)).toBe('https://shop.example/products.json?limit=250&page=2')
+    expect(shopifyFeedUrl('https://shop.example/', 2)).toBe('https://shop.example/products.json?limit=50&page=2')
     expect(shopifyFeedUrl('https://shop.example/collections/vitamins?sort=x', 1))
-      .toBe('https://shop.example/collections/vitamins/products.json?limit=250&page=1')
+      .toBe('https://shop.example/collections/vitamins/products.json?limit=50&page=1')
+  })
+
+  it('uses the whole-shop feed for non-collection pages and none for a product page', () => {
+    expect(shopifyFeedUrl('https://shop.example/pages/about', 1)).toBe('https://shop.example/products.json?limit=50&page=1')
+    expect(shopifyFeedUrl('https://shop.example/en-ng/collections/vitamins/', 2)).toBe('https://shop.example/en-ng/collections/vitamins/products.json?limit=50&page=2')
+    expect(shopifyFeedUrl('https://shop.example/products/zinc', 1)).toBeNull()
+    expect(shopifyFeedUrl('https://shop.example/collections/vitamins/products/zinc', 1)).toBeNull()
   })
 
   it('maps products and skips unnamed ones', () => {
@@ -52,7 +66,12 @@ describe('shopify', () => {
 
 describe('woocommerce', () => {
   it('builds the store api url', () => {
-    expect(wooFeedUrl('https://shop.example/shop/', 3)).toBe('https://shop.example/wp-json/wc/store/v1/products?per_page=100&page=3')
+    expect(wooFeedUrl('https://shop.example/shop/', 3)).toBe('https://shop.example/wp-json/wc/store/v1/products?per_page=50&page=3')
+    expect(wooFeedUrl('https://shop.example/en/shop', 1)).toBe('https://shop.example/wp-json/wc/store/v1/products?per_page=50&page=1')
+    expect(wooFeedUrl('https://shop.example/product-category/vitamins/', 2)).toBe('https://shop.example/wp-json/wc/store/v1/products?per_page=50&page=2&category=vitamins')
+    expect(wooFeedUrl('https://shop.example/product-category/health/vitamins', 1)).toMatch(/&category=vitamins$/)
+    expect(wooFeedUrl('https://shop.example/product/zinc', 1)).toBeNull()
+    expect(wooFeedUrl('https://shop.example/about', 1)).toBeNull()
   })
 
   it('converts minor-unit prices and reads sale prices', () => {
