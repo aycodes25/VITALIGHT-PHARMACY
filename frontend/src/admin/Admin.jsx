@@ -5,6 +5,7 @@ import wordmark from '../../../shared/assets/vitalight logo.png'
 import { productImages } from '../../../shared/productImages.js'
 import { MAX_PHOTOS, moveToFirst, removeAt, validateNewFiles } from './imageList.js'
 import { saveProductWithPhotos } from './saveProductWithPhotos.js'
+import ImportPage from './ImportPage.jsx'
 import './admin.css'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -17,6 +18,7 @@ const navigation = [
   { id: 'products', title: 'Products', icon: '▧' },
   { id: 'categories', title: 'Categories', icon: '▤' },
   { id: 'orders', title: 'Orders', icon: '▣' },
+  { id: 'import', title: 'AI Import', icon: '✦' },
 ]
 const productDefaults = {
   id: '', name: '', category: '', detail: '', price: '', old_price: '', tag: '',
@@ -433,7 +435,7 @@ function Admin() {
           <div className="admin-top-actions"><a href="/" target="_blank" rel="noreferrer">View storefront <span>↗</span></a><button type="button" onClick={loadDashboard} disabled={loading}>{loading ? 'Refreshing…' : '↻ Refresh'}</button></div>
         </header>
         <section className="admin-content">
-          <div className="admin-heading"><div><span className="admin-overline">YOUR PHARMACY, AT A GLANCE</span><h1>{section === 'overview' ? 'Good to see you.' : navigation.find((item) => item.id === section)?.title}</h1><p>{section === 'overview' ? 'Here’s what’s happening at Vitalight today.' : section === 'products' ? 'Add products, update prices, keep track of stock, and choose what shoppers see.' : section === 'categories' ? 'Organise the way customers explore your pharmacy.' : 'Review customer requests and keep every order moving.'}</p></div>
+          <div className="admin-heading"><div><span className="admin-overline">YOUR PHARMACY, AT A GLANCE</span><h1>{section === 'overview' ? 'Good to see you.' : navigation.find((item) => item.id === section)?.title}</h1><p>{section === 'overview' ? 'Here’s what’s happening at Vitalight today.' : section === 'products' ? 'Add products, update prices, keep track of stock, and choose what shoppers see.' : section === 'categories' ? 'Organise the way customers explore your pharmacy.' : section === 'import' ? 'Scan a supplier’s website, review the products it finds, and approve the ones you want to sell.' : 'Review customer requests and keep every order moving.'}</p></div>
             {section === 'products' && <button className="admin-primary-button admin-heading-action" type="button" disabled={busy} onClick={newProduct}>＋ Add product</button>}
             {section === 'categories' && <button className="admin-primary-button admin-heading-action" type="button" onClick={() => { setEditingCategoryName(null); setCategoryForm({ ...categoryDefaults, sort_order: categories.length }); setCategoryDialog(true); setError('') }}>＋ Add category</button>}
           </div>
@@ -444,6 +446,7 @@ function Admin() {
             {section === 'products' && <Products products={visibleProducts} search={search} setSearch={setSearch} editProduct={editProduct} deleteProduct={deleteProduct} busy={busy} />}
             {section === 'categories' && <Categories categories={categories} editCategory={editCategory} deleteCategory={deleteCategory} busy={busy} />}
             {section === 'orders' && <Orders orders={visibleOrders} products={products} search={search} setSearch={setSearch} changeOrderStatus={changeOrderStatus} busy={busy} />}
+            {section === 'import' && <ImportPage authRequest={authRequest} categories={categories} onProductsChanged={loadDashboard} setError={setError} setMessage={setMessage} />}
           </>}
         </section>
       </main>

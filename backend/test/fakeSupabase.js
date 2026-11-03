@@ -1,7 +1,9 @@
 // Minimal chainable stand-in for the Supabase client.
 // results: { [table]: { data, error } } returned when a chain is awaited or ends in single()/maybeSingle().
-export function fakeSupabase({ user = null, results = {} } = {}) {
+export function fakeSupabase({ user = null, results = {}, uploadError = null } = {}) {
   const calls = []
+  const uploads = []
+  const removals = []
 
   function from(table) {
     const callIndex = calls.filter((call) => call.table === table).length
@@ -31,6 +33,8 @@ export function fakeSupabase({ user = null, results = {} } = {}) {
 
   return {
     calls,
+    uploads,
+    removals,
     from,
     auth: {
       async getUser(token) {
@@ -40,7 +44,15 @@ export function fakeSupabase({ user = null, results = {} } = {}) {
     },
     storage: {
       from: () => ({
-        upload: async () => ({ error: null }),
+        upload: async (path, _body, options = {}) => {
+          if (uploadError) return { error: uploadError }
+          uploads.push({ path, contentType: options.contentType })
+          return { error: null }
+        },
+        remove: async (paths) => {
+          removals.push(paths)
+          return { error: null }
+        },
         getPublicUrl: (objectPath) => ({ data: { publicUrl: `https://example.supabase.co/storage/v1/object/public/product-images/${objectPath}` } }),
       }),
     },

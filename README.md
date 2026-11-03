@@ -73,6 +73,20 @@ Galleries need `supabase/migrations/003_product_images.sql` (the `products.image
 
 The `npm run images` CLI is safe to re-run: photos are stored under a name derived from the file contents (`<product-id>/<sha1>.<ext>`), so the same folder gives the same URLs and never adds duplicates. The new photo goes first and earlier photos follow (up to 8; the summary reports how many older photos were dropped). Without the column it only sets `image_url`.
 
+## AI Import (admin)
+
+The admin has an **AI Import** page: paste a shop or category URL from a site you have permission to use (for example a supplier), review the products it finds, and approve, edit or reject each one. Approved products are saved like any other product (photos are copied into your own `product-images` storage) and appear in the admin and on the storefront.
+
+- It reads sites that publish structured product data: Shopify and WooCommerce stores, and pages with schema.org `Product` markup or OpenGraph product tags. It does not use an AI service, so there is no API cost. If a site exposes nothing readable, the page says so.
+- One scan covers up to 20 listing pages and 200 products. Paste a narrower address (a WooCommerce product-category page or a Shopify collection) to scan just that category and import more.
+- Prices are assumed to be in naira; new products start with stock 0 so set the stock before approving.
+- Apply `supabase/migrations/005_import_queue.sql` in the Supabase SQL editor before using it. Until then the page shows a message asking you to apply it.
+- Apply order for a database that has never had the base schema: `supabase/schema.sql`, then migrations 001, (002 optional), 003, 004, then 005. `005_import_queue.sql` references `public.products`, so it fails with `relation "public.products" does not exist` if the base schema is missing.
+- Only signed-in admins (`ADMIN_EMAILS`) can scan. The scanner refuses private/internal addresses and redirects to them. DNS rebinding between the address check and the request is a documented, accepted limitation, because only admins can trigger scans.
+- Imported products start active with stock 0; the reviewer sets stock, category and price before approving. Prices that look like ranges (`₦5,000 - ₦8,000`) or have no number are left empty for the reviewer to enter.
+- Images are copied into the `product-images` bucket only for approved products; rejected products leave nothing behind.
+- Troubleshooting: if scanning says the tables are missing, apply migration 005.
+
 ## Troubleshooting
 
 - **Storefront shows the sample catalogue banner and `/api/catalog` returns 503.** The live Supabase database is missing `supabase/migrations/001_catalogue_v2.sql`. The API selects the new columns `brand`, `rx_required` and `sort_order`; until they exist the query fails, the API answers 503 and the storefront falls back to the bundled sample catalogue. Apply the migration (see the runbook above).

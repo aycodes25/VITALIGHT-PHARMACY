@@ -2,6 +2,7 @@ import express, { Router } from 'express'
 import { randomUUID } from 'node:crypto'
 import { validateProductInput } from '../lib/validate.js'
 import { IMAGE_TYPES, MAX_IMAGE_BYTES } from '../lib/images.js'
+import { insertProduct, isMissingImagesColumn, withoutImages } from '../lib/productStore.js'
 
 const allowedStatuses = new Set(['new', 'contacted', 'fulfilled', 'cancelled'])
 
@@ -17,15 +18,6 @@ function validateCategoryInput(body = {}) {
     return { error: 'Enter a valid display order and choose whether the category is active.' }
   }
   return { value: { name: name.trim(), description: description.trim(), icon, sort_order, is_active } }
-}
-
-// Migration 003 (products.images) may not be applied yet; saving must still work with the main photo.
-const isMissingImagesColumn = (error) => (error?.code === '42703' || error?.code === 'PGRST204')
-  && /\bimages\b/.test(error?.message ?? '')
-
-function withoutImages(value) {
-  const { images: _images, ...rest } = value
-  return rest
 }
 
 export function adminRoutes({ supabase, supabaseUrl, auth }) {
@@ -76,11 +68,7 @@ export function adminRoutes({ supabase, supabaseUrl, auth }) {
     const result = validateProductInput(req.body, { supabaseUrl, requireId: true, productId: req.body?.id })
     if (result.error) return res.status(400).json({ error: result.error })
     try {
-      const insert = (value) => supabase.from('products').insert(value).select('*').single()
-      let { data, error } = await insert(result.value)
-      if (error && 'images' in result.value && isMissingImagesColumn(error)) {
-        ;({ data, error } = await insert(withoutImages(result.value)))
-      }
+      const { data, error } = await insertProduct(supabase, result.value)
       if (error) {
         if (error.code === '23505') return res.status(409).json({ error: 'That product ID is already in use.' })
         if (error.code === '23503') return res.status(400).json({ error: 'Create the selected category before adding this product.' })
